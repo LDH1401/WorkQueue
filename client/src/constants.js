@@ -1,7 +1,6 @@
 export const STATUSES = [
   { value: 'todo', label: 'Cần làm', color: '#64748b' },
   { value: 'in_progress', label: 'Đang làm', color: '#3b82f6' },
-  { value: 'review', label: 'Chờ duyệt', color: '#a855f7' },
   { value: 'done', label: 'Hoàn thành', color: '#10b981' },
 ];
 

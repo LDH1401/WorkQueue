@@ -1,13 +1,11 @@
 import mongoose from 'mongoose';
 
-export const TASK_STATUSES = ['todo', 'in_progress', 'review', 'done'];
+export const TASK_STATUSES = ['todo', 'in_progress', 'done'];
 export const TASK_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
-const commentSchema = new mongoose.Schema(
-  {
-    author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    body: { type: String, required: true, trim: true, maxlength: 2000 },
-  },
+// Ghi chú gắn kèm công việc (nhật ký tiến độ của riêng bạn)
+const noteSchema = new mongoose.Schema(
+  { body: { type: String, required: true, trim: true, maxlength: 2000 } },
   { timestamps: true }
 );
 
@@ -27,9 +25,10 @@ const taskSchema = new mongoose.Schema(
     tags: [{ type: String, trim: true, lowercase: true, maxlength: 30 }],
     order: { type: Number, default: 0 },
     project: { type: mongoose.Schema.Types.ObjectId, ref: 'Project', default: null, index: true },
-    assignee: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    comments: [commentSchema],
+    // Xoá mềm: giữ lại để hoàn tác được, mọi truy vấn đều lọc deletedAt: null
+    deletedAt: { type: Date, default: null, index: true },
+    comments: [noteSchema],
   },
   { timestamps: true }
 );

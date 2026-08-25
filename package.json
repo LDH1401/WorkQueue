@@ -13,6 +13,7 @@
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
     "seed": "npm --prefix server run seed",
+    "migrate": "npm --prefix server run migrate",
     "build": "npm --prefix client run build"
   },
   "comment": "dependencies bên dưới là bản sao của server/package.json, dùng cho Vercel Serverless Function ở api/. Sửa version ở server/ thì nhớ sửa cả ở đây.",

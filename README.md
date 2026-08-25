@@ -1,19 +1,31 @@
 # WorkQueue — Phần mềm quản lý công việc
 
-Ứng dụng quản lý công việc theo nhóm, xây dựng bằng **React (Vite) + Express + MongoDB (Mongoose)**.
+Ứng dụng quản lý công việc **cá nhân**, xây dựng bằng **React (Vite) + Express + MongoDB (Mongoose)**.
 
 ![stack](https://img.shields.io/badge/React-18-61dafb) ![stack](https://img.shields.io/badge/Express-4-black) ![stack](https://img.shields.io/badge/MongoDB-7-47A248)
 
 ## Tính năng
 
-- **Xác thực JWT**: đăng ký, đăng nhập, đổi mật khẩu, cập nhật hồ sơ.
-- **Bảng Kanban**: 4 cột (Cần làm / Đang làm / Chờ duyệt / Hoàn thành), **kéo thả** để đổi trạng thái và thứ tự.
-- **Danh sách công việc**: lọc theo trạng thái, độ ưu tiên, dự án, người thực hiện, hạn chót; tìm kiếm; sắp xếp; phân trang.
-- **Công việc**: tiêu đề, mô tả, độ ưu tiên, hạn chót, thẻ (tag), người thực hiện, dự án, **bình luận**.
-- **Dự án**: tạo/sửa/xoá, gán thành viên, màu nhận diện, theo dõi tiến độ.
+- **Xác thực JWT**: đăng ký, đăng nhập, đổi mật khẩu, cập nhật hồ sơ. Khoá đăng ký bằng `ALLOW_REGISTRATION=false` sau khi đã tạo tài khoản của mình.
+- **Bảng Kanban**: 3 cột (Cần làm / Đang làm / Hoàn thành), **kéo thả** để đổi trạng thái và thứ tự, thêm nhanh ngay trong cột.
+- **Bảng lệnh `Ctrl/⌘ + K`**: tìm công việc, nhảy trang, đổi giao diện. Tìm được cả khi gõ không dấu.
+- **Xoá an toàn**: xoá là xoá mềm, có nút **Hoàn tác** trong 7 giây; quá 30 ngày mới dọn hẳn.
+- **Danh sách công việc**: lọc theo trạng thái, độ ưu tiên, dự án, hạn chót; tìm kiếm; sắp xếp; phân trang.
+- **Công việc**: tiêu đề, mô tả, độ ưu tiên, hạn chót, thẻ (tag), dự án, **ghi chú tiến độ**.
+- **Dự án**: tạo/sửa/xoá, màu nhận diện, theo dõi tiến độ.
 - **Dashboard**: thống kê tổng quan, tỉ lệ hoàn thành, việc quá hạn, deadline sắp tới.
-- **Phân quyền dữ liệu**: chỉ thấy công việc do mình tạo, được giao cho mình, hoặc thuộc dự án mình tham gia.
+- **Dữ liệu riêng tư**: mỗi tài khoản chỉ thấy công việc và dự án của chính mình.
+- **Giao diện sáng/tối**: 3 chế độ Sáng / Tối / Theo hệ thống, ghi nhớ lựa chọn.
 - Giao diện tiếng Việt, responsive (dùng tốt trên điện thoại).
+
+### Phím tắt
+
+| Phím | Tác dụng |
+| --- | --- |
+| `Ctrl/⌘ + K` | Mở bảng lệnh |
+| `N` | Tạo công việc mới |
+| `/` | Nhảy vào ô tìm kiếm của trang |
+| `↑` `↓` `↵` `esc` | Điều khiển trong bảng lệnh |
 
 ## Yêu cầu
 
@@ -49,8 +61,6 @@ npm run dev
 | Email | Mật khẩu |
 | --- | --- |
 | demo@workqueue.dev | 123456 |
-| binh@workqueue.dev | 123456 |
-| chi@workqueue.dev | 123456 |
 
 ### Các lệnh khác
 
@@ -59,7 +69,8 @@ npm run dev
 | `npm run dev` | Chạy song song API (cổng 5000) và web (cổng 5173) |
 | `npm run dev:server` | Chỉ chạy API, tự khởi động lại khi sửa code |
 | `npm run dev:client` | Chỉ chạy giao diện |
-| `npm run seed` | Xoá sạch DB và nạp lại dữ liệu mẫu |
+| `npm run seed` | **Xoá sạch DB** và nạp lại dữ liệu mẫu |
+| `npm run migrate` | Chuyển dữ liệu cũ sang cấu trúc mới + dọn thùng rác quá 30 ngày |
 | `npm run build` | Build giao diện ra `client/dist` |
 
 ## Cấu trúc thư mục
@@ -79,6 +90,7 @@ WorkQueue/
 │       ├── middleware/           # Xác thực JWT, bắt lỗi tập trung
 │       ├── utils/                # ApiError, bộ lọc phân quyền
 │       ├── seed.js               # Script tạo dữ liệu mẫu
+│       ├── migrate.js            # Chuyển dữ liệu cũ sang cấu trúc mới
 │       ├── app.js                # Khởi tạo Express
 │       └── server.js             # Điểm vào
 └── client/                       # Frontend React + Vite
@@ -104,7 +116,6 @@ Mọi endpoint (trừ `/register`, `/login`, `/health`) yêu cầu header `Autho
 | GET | `/api/auth/me` | Thông tin người dùng hiện tại |
 | PATCH | `/api/auth/me` | Cập nhật `{ name, avatarColor }` |
 | PATCH | `/api/auth/password` | Đổi `{ currentPassword, newPassword }` |
-| GET | `/api/auth/users` | Danh sách người dùng (để gán việc) |
 
 ### Công việc
 
@@ -117,13 +128,14 @@ Mọi endpoint (trừ `/register`, `/login`, `/health`) yêu cầu header `Autho
 | GET | `/api/tasks/:id` | Chi tiết |
 | PATCH | `/api/tasks/:id` | Cập nhật |
 | PATCH | `/api/tasks/:id/move` | Kéo thả `{ status, index }` |
-| DELETE | `/api/tasks/:id` | Xoá |
-| POST | `/api/tasks/:id/comments` | Thêm bình luận `{ body }` |
-| DELETE | `/api/tasks/:id/comments/:commentId` | Xoá bình luận của mình |
+| DELETE | `/api/tasks/:id` | Xoá mềm (đánh dấu `deletedAt`) |
+| POST | `/api/tasks/:id/restore` | Hoàn tác việc vừa xoá |
+| POST | `/api/tasks/:id/comments` | Thêm ghi chú `{ body }` |
+| DELETE | `/api/tasks/:id/comments/:commentId` | Xoá ghi chú |
 
 Tham số lọc của `GET /api/tasks`:
 
-`status`, `priority`, `project` (id hoặc `none`), `assignee` (id, `me`, `none`), `tag`, `q` (từ khoá),
+`status`, `priority`, `project` (id hoặc `none`), `tag`, `q` (từ khoá),
 `due` (`overdue` \| `today` \| `week`), `sort` (`createdAt` \| `oldest` \| `dueDate` \| `priority` \| `title`), `page`, `limit`.
 
 ### Dự án
@@ -134,7 +146,7 @@ Tham số lọc của `GET /api/tasks`:
 | POST | `/api/projects` | Tạo dự án |
 | GET | `/api/projects/:id` | Chi tiết |
 | PATCH | `/api/projects/:id` | Cập nhật |
-| DELETE | `/api/projects/:id` | Xoá (chỉ chủ dự án) |
+| DELETE | `/api/projects/:id` | Xoá |
 
 ## Triển khai (deploy)
 
@@ -178,6 +190,7 @@ Database luôn phải nằm trên **MongoDB Atlas** (MongoDB chạy trên máy c
 | --- | --- |
 | `MONGO_URI` | Chuỗi kết nối Atlas |
 | `JWT_SECRET` | Chuỗi ngẫu nhiên dài (`openssl rand -base64 32`) |
+| `ALLOW_REGISTRATION` | `false` sau khi đã tạo xong tài khoản của bạn |
 
 Không cần đặt `VITE_API_URL` (frontend gọi thẳng `/api` cùng domain) và không cần `CLIENT_URL` (không có CORS).
 
@@ -222,5 +235,6 @@ MONGO_URI="<chuỗi Atlas>" npm --prefix server run seed
 
 - [ ] `JWT_SECRET` là chuỗi ngẫu nhiên, khác giá trị trong `.env.example`
 - [ ] File `.env` không bị commit (đã có trong `.gitignore`)
+- [ ] `ALLOW_REGISTRATION=false` sau khi đã tạo tài khoản — nếu không, ai vào link cũng đăng ký được
 - [ ] User database Atlas chỉ có quyền `readWrite` trên database `workqueue`
 - [ ] Không đặt secret vào biến `VITE_*` — chúng bị nhúng thẳng vào code frontend, ai cũng đọc được

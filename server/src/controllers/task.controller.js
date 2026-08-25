@@ -3,12 +3,7 @@ import Task, { TASK_STATUSES, TASK_PRIORITIES } from '../models/Task.js';
 import { ApiError, asyncHandler } from '../utils/ApiError.js';
 import { taskAccessFilter } from '../utils/access.js';
 
-const POPULATE = [
-  { path: 'assignee', select: 'name email avatarColor' },
-  { path: 'createdBy', select: 'name email avatarColor' },
-  { path: 'project', select: 'name color' },
-  { path: 'comments.author', select: 'name email avatarColor' },
-];
+const POPULATE = [{ path: 'project', select: 'name color' }];
 
 const SORTABLE = {
   createdAt: '-createdAt',
@@ -20,14 +15,13 @@ const SORTABLE = {
 };
 
 /** Ghép filter quyền truy cập với các tham số lọc trên query string */
-async function buildQuery(req) {
-  const filter = { $and: [await taskAccessFilter(req.user._id)] };
-  const { status, priority, project, assignee, tag, q, due } = req.query;
+function buildQuery(req) {
+  const filter = { $and: [taskAccessFilter(req.user._id)] };
+  const { status, priority, project, tag, q, due } = req.query;
 
   if (status && TASK_STATUSES.includes(status)) filter.$and.push({ status });
   if (priority && TASK_PRIORITIES.includes(priority)) filter.$and.push({ priority });
   if (project) filter.$and.push({ project: project === 'none' ? null : project });
-  if (assignee) filter.$and.push({ assignee: assignee === 'me' ? req.user._id : assignee === 'none' ? null : assignee });
   if (tag) filter.$and.push({ tags: tag.toLowerCase() });
 
   if (q) {
@@ -50,7 +44,7 @@ async function buildQuery(req) {
 }
 
 export const listTasks = asyncHandler(async (req, res) => {
-  const filter = await buildQuery(req);
+  const filter = buildQuery(req);
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
   const sort = SORTABLE[req.query.sort] || SORTABLE.createdAt;
@@ -65,24 +59,27 @@ export const listTasks = asyncHandler(async (req, res) => {
 
 /** Toàn bộ công việc gom theo cột, phục vụ màn hình Kanban */
 export const boardTasks = asyncHandler(async (req, res) => {
-  const filter = await buildQuery(req);
+  const filter = buildQuery(req);
   const tasks = await Task.find(filter).populate(POPULATE).sort({ order: 1, createdAt: -1 }).limit(500);
 
   const columns = Object.fromEntries(TASK_STATUSES.map((s) => [s, []]));
-  for (const task of tasks) columns[task.status].push(task);
+  for (const task of tasks) {
+    // Dữ liệu cũ có thể mang trạng thái không còn tồn tại -> đưa về cột đầu cho khỏi thất lạc
+    (columns[task.status] ?? columns[TASK_STATUSES[0]]).push(task);
+  }
 
   res.json({ success: true, columns });
 });
 
 export const getTask = asyncHandler(async (req, res) => {
-  const filter = await taskAccessFilter(req.user._id);
+  const filter = taskAccessFilter(req.user._id);
   const task = await Task.findOne({ $and: [{ _id: req.params.id }, filter] }).populate(POPULATE);
   if (!task) throw new ApiError(404, 'Không tìm thấy công việc');
   res.json({ success: true, task });
 });
 
 export const createTask = asyncHandler(async (req, res) => {
-  const { title, description, status, priority, dueDate, tags, project, assignee } = req.body;
+  const { title, description, status, priority, dueDate, tags, project } = req.body;
   if (!title?.trim()) throw new ApiError(400, 'Vui lòng nhập tiêu đề công việc');
 
   const first = await Task.findOne({ status: status || 'todo' }).sort('order').select('order').lean();
@@ -95,7 +92,6 @@ export const createTask = asyncHandler(async (req, res) => {
     dueDate: dueDate || null,
     tags: Array.isArray(tags) ? tags : [],
     project: project || null,
-    assignee: assignee || null,
     createdBy: req.user._id,
     order: (first?.order ?? 0) - 1,
   });
@@ -104,7 +100,7 @@ export const createTask = asyncHandler(async (req, res) => {
 });
 
 export const updateTask = asyncHandler(async (req, res) => {
-  const filter = await taskAccessFilter(req.user._id);
+  const filter = taskAccessFilter(req.user._id);
   const task = await Task.findOne({ $and: [{ _id: req.params.id }, filter] });
   if (!task) throw new ApiError(404, 'Không tìm thấy công việc');
 
@@ -114,7 +110,6 @@ export const updateTask = asyncHandler(async (req, res) => {
   }
   if (req.body.dueDate !== undefined) task.dueDate = req.body.dueDate || null;
   if (req.body.project !== undefined) task.project = req.body.project || null;
-  if (req.body.assignee !== undefined) task.assignee = req.body.assignee || null;
 
   await task.save();
   res.json({ success: true, task: await task.populate(POPULATE) });
@@ -125,7 +120,7 @@ export const moveTask = asyncHandler(async (req, res) => {
   const { status, index = 0 } = req.body;
   if (!TASK_STATUSES.includes(status)) throw new ApiError(400, 'Trạng thái không hợp lệ');
 
-  const access = await taskAccessFilter(req.user._id);
+  const access = taskAccessFilter(req.user._id);
   const task = await Task.findOne({ $and: [{ _id: req.params.id }, access] });
   if (!task) throw new ApiError(404, 'Không tìm thấy công việc');
 
@@ -147,50 +142,63 @@ export const moveTask = asyncHandler(async (req, res) => {
   res.json({ success: true, task: await Task.findById(task._id).populate(POPULATE) });
 });
 
+/** Xoá mềm: đánh dấu deletedAt để còn hoàn tác được */
 export const deleteTask = asyncHandler(async (req, res) => {
-  const filter = await taskAccessFilter(req.user._id);
-  const task = await Task.findOneAndDelete({ $and: [{ _id: req.params.id }, filter] });
+  const filter = taskAccessFilter(req.user._id);
+  const task = await Task.findOneAndUpdate(
+    { $and: [{ _id: req.params.id }, filter] },
+    { $set: { deletedAt: new Date() } },
+    { new: true }
+  );
   if (!task) throw new ApiError(404, 'Không tìm thấy công việc');
   res.json({ success: true, message: 'Đã xoá công việc' });
 });
 
+/** Hoàn tác việc vừa xoá */
+export const restoreTask = asyncHandler(async (req, res) => {
+  const task = await Task.findOneAndUpdate(
+    { _id: req.params.id, createdBy: req.user._id, deletedAt: { $ne: null } },
+    { $set: { deletedAt: null } },
+    { new: true }
+  );
+  if (!task) throw new ApiError(404, 'Không tìm thấy công việc đã xoá');
+  res.json({ success: true, task: await task.populate(POPULATE) });
+});
+
 export const addComment = asyncHandler(async (req, res) => {
   const { body } = req.body;
-  if (!body?.trim()) throw new ApiError(400, 'Nội dung bình luận không được để trống');
+  if (!body?.trim()) throw new ApiError(400, 'Nội dung ghi chú không được để trống');
 
-  const filter = await taskAccessFilter(req.user._id);
+  const filter = taskAccessFilter(req.user._id);
   const task = await Task.findOne({ $and: [{ _id: req.params.id }, filter] });
   if (!task) throw new ApiError(404, 'Không tìm thấy công việc');
 
-  task.comments.push({ author: req.user._id, body });
+  task.comments.push({ body });
   await task.save();
   res.status(201).json({ success: true, task: await task.populate(POPULATE) });
 });
 
 export const deleteComment = asyncHandler(async (req, res) => {
-  const filter = await taskAccessFilter(req.user._id);
+  const filter = taskAccessFilter(req.user._id);
   const task = await Task.findOne({ $and: [{ _id: req.params.id }, filter] });
   if (!task) throw new ApiError(404, 'Không tìm thấy công việc');
 
-  const comment = task.comments.id(req.params.commentId);
-  if (!comment) throw new ApiError(404, 'Không tìm thấy bình luận');
-  if (comment.author.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, 'Bạn chỉ có thể xoá bình luận của mình');
-  }
+  const note = task.comments.id(req.params.commentId);
+  if (!note) throw new ApiError(404, 'Không tìm thấy ghi chú');
 
-  comment.deleteOne();
+  note.deleteOne();
   await task.save();
   res.json({ success: true, task: await task.populate(POPULATE) });
 });
 
 /** Số liệu tổng quan cho dashboard */
 export const taskStats = asyncHandler(async (req, res) => {
-  const access = await taskAccessFilter(req.user._id);
+  const access = taskAccessFilter(req.user._id);
   const now = new Date();
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
   const weekAgo = new Date(now.getTime() - 7 * 864e5);
 
-  const [byStatus, byPriority, overdue, dueToday, completedThisWeek, assignedToMe, upcoming] = await Promise.all([
+  const [byStatus, byPriority, overdue, dueToday, completedThisWeek, upcoming] = await Promise.all([
     Task.aggregate([{ $match: access }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     Task.aggregate([{ $match: access }, { $group: { _id: '$priority', count: { $sum: 1 } } }]),
     Task.countDocuments({ $and: [access, { dueDate: { $lt: now }, status: { $ne: 'done' } }] }),
@@ -198,7 +206,6 @@ export const taskStats = asyncHandler(async (req, res) => {
       $and: [access, { dueDate: { $gte: startOfToday, $lt: new Date(startOfToday.getTime() + 864e5) } }],
     }),
     Task.countDocuments({ $and: [access, { status: 'done', completedAt: { $gte: weekAgo } }] }),
-    Task.countDocuments({ $and: [access, { assignee: req.user._id, status: { $ne: 'done' } }] }),
     Task.find({ $and: [access, { dueDate: { $gte: now }, status: { $ne: 'done' } }] })
       .populate(POPULATE)
       .sort('dueDate')
@@ -223,7 +230,7 @@ export const taskStats = asyncHandler(async (req, res) => {
       overdue,
       dueToday,
       completedThisWeek,
-      assignedToMe,
+      inProgress: status.in_progress,
       completionRate: total ? Math.round((status.done / total) * 100) : 0,
       upcoming,
     },

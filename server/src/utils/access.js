@@ -1,20 +1,8 @@
-import Project from '../models/Project.js';
-
 /**
- * Bộ lọc quyền xem công việc: người tạo, người được giao,
- * hoặc bất kỳ công việc nào thuộc dự án mà user là chủ / thành viên.
+ * Ứng dụng dùng cho cá nhân: mọi dữ liệu đều thuộc về người đang đăng nhập.
+ * Vẫn lọc theo createdBy để nếu có nhiều tài khoản trên cùng một server
+ * thì dữ liệu của từng người vẫn tách biệt hoàn toàn.
  */
-export async function taskAccessFilter(userId) {
-  const projectIds = await Project.find({
-    $or: [{ owner: userId }, { members: userId }],
-  }).distinct('_id');
+export const taskAccessFilter = (userId) => ({ createdBy: userId, deletedAt: null });
 
-  return {
-    $or: [{ createdBy: userId }, { assignee: userId }, { project: { $in: projectIds } }],
-  };
-}
-
-/** Bộ lọc quyền xem dự án */
-export function projectAccessFilter(userId) {
-  return { $or: [{ owner: userId }, { members: userId }] };
-}
+export const projectAccessFilter = (userId) => ({ owner: userId });

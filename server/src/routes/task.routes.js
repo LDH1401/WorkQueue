@@ -8,6 +8,7 @@ import {
   updateTask,
   moveTask,
   deleteTask,
+  restoreTask,
   addComment,
   deleteComment,
   taskStats,
@@ -22,6 +23,7 @@ router.get('/stats', taskStats);
 router.route('/').get(listTasks).post(createTask);
 router.route('/:id').get(getTask).patch(updateTask).delete(deleteTask);
 router.patch('/:id/move', moveTask);
+router.post('/:id/restore', restoreTask);
 router.post('/:id/comments', addComment);
 router.delete('/:id/comments/:commentId', deleteComment);
 

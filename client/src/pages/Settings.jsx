@@ -1,12 +1,21 @@
 import { useState } from 'react';
 import api from '../api/client';
+import Icon from '../components/icons';
 import { Avatar } from '../components/ui';
 import { PROJECT_COLORS } from '../constants';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
+
+const THEMES = [
+  { value: 'light', icon: 'sun', label: 'Sáng' },
+  { value: 'dark', icon: 'moon', label: 'Tối' },
+  { value: 'system', icon: 'monitor', label: 'Theo hệ thống' },
+];
 
 export default function Settings() {
   const { user, updateUser } = useAuth();
+  const { theme, setTheme } = useTheme();
   const toast = useToast();
   const [profile, setProfile] = useState({ name: user.name, avatarColor: user.avatarColor });
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirm: '' });
@@ -51,16 +60,18 @@ export default function Settings() {
       <header className="page-head">
         <div>
           <h1>Tài khoản</h1>
-          <p className="muted">Cập nhật thông tin cá nhân và bảo mật.</p>
+          <p>Cập nhật thông tin cá nhân, bảo mật và giao diện.</p>
         </div>
       </header>
 
       <div className="two-col">
         <section className="card">
-          <div className="card__head"><h2>Thông tin cá nhân</h2></div>
+          <div className="card__head">
+            <h2>Thông tin cá nhân</h2>
+          </div>
 
           <div className="profile-preview">
-            <Avatar user={{ ...user, ...profile }} size={64} />
+            <Avatar user={{ ...user, ...profile }} size={60} />
             <div>
               <strong>{profile.name}</strong>
               <span className="muted-sm">{user.email}</span>
@@ -89,52 +100,88 @@ export default function Settings() {
               </div>
             </div>
 
-            <button type="submit" className="btn btn--primary" disabled={savingProfile}>
-              {savingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}
-            </button>
+            <div className="row-end">
+              <button type="submit" className="btn btn--primary" disabled={savingProfile}>
+                {savingProfile ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+            </div>
           </form>
         </section>
 
-        <section className="card">
-          <div className="card__head"><h2>Đổi mật khẩu</h2></div>
+        <div>
+          <section className="card">
+            <div className="card__head">
+              <h2>Giao diện</h2>
+            </div>
 
-          <form onSubmit={savePassword} className="form">
-            <label className="field">
-              <span>Mật khẩu hiện tại</span>
-              <input
-                type="password"
-                value={passwords.currentPassword}
-                onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-                required
-              />
-            </label>
+            <div className="theme-cards">
+              {THEMES.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  className={`theme-card${theme === t.value ? ' theme-card--active' : ''}`}
+                  onClick={() => setTheme(t.value)}
+                >
+                  <Icon name={t.icon} />
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <p className="muted-sm" style={{ marginTop: 12 }}>
+              "Theo hệ thống" sẽ tự đổi sáng/tối theo cài đặt của máy bạn.
+            </p>
+          </section>
 
-            <label className="field">
-              <span>Mật khẩu mới</span>
-              <input
-                type="password"
-                value={passwords.newPassword}
-                onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
-                minLength={6}
-                required
-              />
-            </label>
+          <section className="card">
+            <div className="card__head">
+              <h2>Đổi mật khẩu</h2>
+            </div>
 
-            <label className="field">
-              <span>Xác nhận mật khẩu mới</span>
-              <input
-                type="password"
-                value={passwords.confirm}
-                onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
-                required
-              />
-            </label>
+            <form onSubmit={savePassword} className="form">
+              <label className="field">
+                <span>Mật khẩu hiện tại</span>
+                <input
+                  type="password"
+                  value={passwords.currentPassword}
+                  onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
 
-            <button type="submit" className="btn btn--primary" disabled={savingPassword}>
-              {savingPassword ? 'Đang đổi...' : 'Đổi mật khẩu'}
-            </button>
-          </form>
-        </section>
+              <div className="grid-2">
+                <label className="field">
+                  <span>Mật khẩu mới</span>
+                  <input
+                    type="password"
+                    value={passwords.newPassword}
+                    onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
+                    minLength={6}
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+
+                <label className="field">
+                  <span>Xác nhận</span>
+                  <input
+                    type="password"
+                    value={passwords.confirm}
+                    onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                    autoComplete="new-password"
+                    required
+                  />
+                </label>
+              </div>
+
+              <div className="row-end">
+                <button type="submit" className="btn btn--primary" disabled={savingPassword}>
+                  {savingPassword ? 'Đang đổi...' : 'Đổi mật khẩu'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
       </div>
     </>
   );

@@ -9,6 +9,12 @@ function signToken(user) {
 }
 
 export const register = asyncHandler(async (req, res) => {
+  // Ứng dụng cá nhân: sau khi tạo xong tài khoản của mình, đặt
+  // ALLOW_REGISTRATION=false để người lạ không đăng ký được nữa.
+  if (process.env.ALLOW_REGISTRATION === 'false') {
+    throw new ApiError(403, 'Ứng dụng này chỉ dành cho cá nhân, đã tắt đăng ký tài khoản mới');
+  }
+
   const { name, email, password } = req.body;
   if (!name || !email || !password) throw new ApiError(400, 'Vui lòng nhập đầy đủ họ tên, email và mật khẩu');
 
@@ -54,9 +60,4 @@ export const changePassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   await user.save();
   res.json({ success: true, message: 'Đổi mật khẩu thành công' });
-});
-
-export const listUsers = asyncHandler(async (_req, res) => {
-  const users = await User.find().select('name email avatarColor').sort('name');
-  res.json({ success: true, users });
 });

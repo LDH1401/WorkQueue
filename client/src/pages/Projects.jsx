@@ -1,32 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api/client';
-import { Avatar, ConfirmDialog, EmptyState, Modal, Spinner } from '../components/ui';
+import Icon from '../components/icons';
+import { ConfirmDialog, EmptyState, ListSkeleton, Modal } from '../components/ui';
 import { PROJECT_COLORS } from '../constants';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { formatDate } from '../utils/date';
 
-const EMPTY = { name: '', description: '', color: PROJECT_COLORS[0], members: [] };
+const EMPTY = { name: '', description: '', color: PROJECT_COLORS[0] };
 
 export default function Projects() {
-  const { user } = useAuth();
   const toast = useToast();
   const [projects, setProjects] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState(null);
+  const [params, setParams] = useSearchParams();
 
   const load = async () => {
-    setLoading(true);
     try {
-      const [p, u] = await Promise.all([api.get('/projects'), api.get('/auth/users')]);
-      setProjects(p.data.projects);
-      setUsers(u.data.users);
+      const { data } = await api.get('/projects');
+      setProjects(data.projects);
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -39,6 +36,14 @@ export default function Projects() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Mở sẵn form khi tới từ bảng lệnh (⌘K)
+  useEffect(() => {
+    if (!params.get('new')) return;
+    openDialog();
+    setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params]);
+
   const openDialog = (project = null) => {
     setError('');
     setEditing(project || {});
@@ -48,7 +53,6 @@ export default function Projects() {
             name: project.name,
             description: project.description || '',
             color: project.color,
-            members: project.members.map((m) => m._id),
           }
         : EMPTY
     );
@@ -78,54 +82,63 @@ export default function Projects() {
     try {
       await api.delete(`/projects/${deleting._id}`);
       toast.success('Đã xoá dự án');
-      setDeleting(null);
       load();
     } catch (err) {
       toast.error(err.message);
+    } finally {
       setDeleting(null);
     }
   };
 
-  const toggleMember = (id) =>
-    setForm((prev) => ({
-      ...prev,
-      members: prev.members.includes(id) ? prev.members.filter((m) => m !== id) : [...prev.members, id],
-    }));
-
-  if (loading) return <Spinner />;
 
   return (
     <>
       <header className="page-head">
         <div>
           <h1>Dự án</h1>
-          <p className="muted">Nhóm công việc theo từng dự án và theo dõi tiến độ.</p>
+          <p>Nhóm công việc theo từng dự án và theo dõi tiến độ.</p>
         </div>
-        <button type="button" className="btn btn--primary" onClick={() => openDialog()}>+ Dự án mới</button>
+        <button type="button" className="btn btn--primary" onClick={() => openDialog()}>
+          <Icon name="plus" />
+          Dự án mới
+        </button>
       </header>
 
-      {projects.length === 0 ? (
+      {loading ? (
+        <ListSkeleton rows={4} />
+      ) : projects.length === 0 ? (
         <EmptyState
-          icon="📁"
+          icon="folder"
           title="Chưa có dự án nào"
           description="Tạo dự án đầu tiên để bắt đầu tổ chức công việc."
-          action={<button type="button" className="btn btn--primary" onClick={() => openDialog()}>+ Tạo dự án</button>}
+          action={
+            <button type="button" className="btn btn--primary" onClick={() => openDialog()}>
+              <Icon name="plus" />
+              Tạo dự án
+            </button>
+          }
         />
       ) : (
         <div className="project-grid">
           {projects.map((project) => {
             const percent = project.stats.total ? Math.round((project.stats.done / project.stats.total) * 100) : 0;
-            const isOwner = project.owner._id === user?._id;
 
             return (
-              <article key={project._id} className="project-card" style={{ borderTopColor: project.color }}>
+              <article key={project._id} className="project-card" style={{ '--project-color': project.color }}>
                 <header>
                   <h3>{project.name}</h3>
                   <div className="project-card__actions">
-                    <button type="button" className="icon-btn" onClick={() => openDialog(project)} title="Sửa">✎</button>
-                    {isOwner && (
-                      <button type="button" className="icon-btn icon-btn--danger" onClick={() => setDeleting(project)} title="Xoá">🗑</button>
-                    )}
+                    <button type="button" className="icon-btn" onClick={() => openDialog(project)} title="Sửa">
+                      <Icon name="pencil" />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--danger"
+                      onClick={() => setDeleting(project)}
+                      title="Xoá"
+                    >
+                      <Icon name="trash" />
+                    </button>
                   </div>
                 </header>
 
@@ -134,14 +147,13 @@ export default function Projects() {
                 <div className="progress-thin">
                   <span style={{ width: `${percent}%`, background: project.color }} />
                 </div>
-                <span className="muted-sm">{project.stats.done}/{project.stats.total} công việc hoàn thành ({percent}%)</span>
+                <span className="muted-sm num">
+                  {project.stats.done}/{project.stats.total} công việc hoàn thành ({percent}%)
+                </span>
 
-                <footer>
-                  <div className="avatar-stack">
-                    {project.members.slice(0, 4).map((m) => <Avatar key={m._id} user={m} size={28} />)}
-                    {project.members.length > 4 && <span className="avatar avatar--more">+{project.members.length - 4}</span>}
-                  </div>
-                  <Link to={`/board?project=${project._id}`} className="link">Xem bảng →</Link>
+                <footer>                  <Link to={`/board?project=${project._id}`} className="link">
+                    Xem bảng <Icon name="arrowRight" width={13} height={13} />
+                  </Link>
                 </footer>
 
                 <small className="muted-sm">Tạo ngày {formatDate(project.createdAt)}</small>
@@ -151,18 +163,37 @@ export default function Projects() {
         </div>
       )}
 
-      <Modal open={Boolean(editing)} onClose={() => setEditing(null)} title={editing?._id ? 'Sửa dự án' : 'Tạo dự án mới'}>
+      <Modal
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        title={editing?._id ? 'Sửa dự án' : 'Tạo dự án mới'}
+      >
         <form onSubmit={submit} className="form">
-          {error && <div className="alert alert--error">{error}</div>}
+          {error && (
+            <div className="alert alert--error">
+              <Icon name="alert" />
+              {error}
+            </div>
+          )}
 
           <label className="field">
             <span>Tên dự án *</span>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ví dụ: Website bán hàng" autoFocus />
+            <input
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Ví dụ: Website bán hàng"
+              autoFocus
+            />
           </label>
 
           <label className="field">
             <span>Mô tả</span>
-            <textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              placeholder="Dự án này nhằm mục đích gì?"
+            />
           </label>
 
           <div className="field">
@@ -181,21 +212,11 @@ export default function Projects() {
             </div>
           </div>
 
-          <div className="field">
-            <span>Thành viên</span>
-            <div className="member-picker">
-              {users.map((u) => (
-                <label key={u._id} className={`member${form.members.includes(u._id) ? ' member--on' : ''}`}>
-                  <input type="checkbox" checked={form.members.includes(u._id)} onChange={() => toggleMember(u._id)} />
-                  <Avatar user={u} size={26} />
-                  {u.name}
-                </label>
-              ))}
-            </div>
-          </div>
 
           <div className="row-end">
-            <button type="button" className="btn btn--ghost" onClick={() => setEditing(null)}>Huỷ</button>
+            <button type="button" className="btn btn--ghost" onClick={() => setEditing(null)}>
+              Huỷ
+            </button>
             <button type="submit" className="btn btn--primary" disabled={saving}>
               {saving ? 'Đang lưu...' : editing?._id ? 'Lưu thay đổi' : 'Tạo dự án'}
             </button>

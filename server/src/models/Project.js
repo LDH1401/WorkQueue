@@ -11,12 +11,9 @@ const projectSchema = new mongoose.Schema(
     description: { type: String, trim: true, default: '', maxlength: 2000 },
     color: { type: String, default: '#6366f1' },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     archived: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
-
-projectSchema.index({ members: 1 });
 
 export default mongoose.model('Project', projectSchema);

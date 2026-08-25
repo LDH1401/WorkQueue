@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { PRIORITIES, STATUSES } from '../constants';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { relativeTime, toInputDate } from '../utils/date';
-import { Avatar, ConfirmDialog, Modal } from './ui';
+import Icon from './icons';
+import { ConfirmDialog, Modal } from './ui';
 
 const EMPTY = {
   title: '',
@@ -13,16 +13,14 @@ const EMPTY = {
   priority: 'medium',
   dueDate: '',
   project: '',
-  assignee: '',
   tags: '',
 };
 
 /**
  * Hộp thoại tạo mới / chỉnh sửa công việc.
- * task = null  -> chế độ tạo mới
+ * task = null -> chế độ tạo mới
  */
-export default function TaskDialog({ open, task, projects = [], users = [], onClose, onSaved, onDeleted }) {
-  const { user } = useAuth();
+export default function TaskDialog({ open, task, projects = [], onClose, onSaved, onDeleted }) {
   const toast = useToast();
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
@@ -46,7 +44,6 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
             priority: task.priority || 'medium',
             dueDate: toInputDate(task.dueDate),
             project: task.project?._id || task.project || '',
-            assignee: task.assignee?._id || task.assignee || '',
             tags: (task.tags || []).join(', '),
           }
         : EMPTY
@@ -67,8 +64,10 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
         title: form.title.trim(),
         dueDate: form.dueDate || null,
         project: form.project || null,
-        assignee: form.assignee || null,
-        tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
+        tags: form.tags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean),
       };
 
       const { data } = isEdit ? await api.patch(`/tasks/${task._id}`, payload) : await api.post('/tasks', payload);
@@ -84,10 +83,22 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
   };
 
   const remove = async () => {
+    const id = task._id;
     try {
-      await api.delete(`/tasks/${task._id}`);
-      toast.success('Đã xoá công việc');
-      onDeleted?.(task._id);
+      await api.delete(`/tasks/${id}`);
+
+      toast.undo('Đã xoá công việc', async () => {
+        try {
+          await api.post(`/tasks/${id}/restore`);
+          toast.success('Đã khôi phục công việc');
+        } catch (err) {
+          toast.error(err.message);
+        } finally {
+          onDeleted?.();
+        }
+      });
+
+      onDeleted?.(id);
       setConfirming(false);
       onClose();
     } catch (err) {
@@ -120,18 +131,33 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title={isEdit ? 'Chi tiết công việc' : 'Tạo công việc mới'} width={640}>
+      <Modal open={open} onClose={onClose} title={isEdit ? 'Chi tiết công việc' : 'Tạo công việc mới'} width={660}>
         <form onSubmit={submit} className="form">
-          {error && <div className="alert alert--error">{error}</div>}
+          {error && (
+            <div className="alert alert--error">
+              <Icon name="alert" />
+              {error}
+            </div>
+          )}
 
           <label className="field">
             <span>Tiêu đề *</span>
-            <input value={form.title} onChange={setField('title')} placeholder="Ví dụ: Thiết kế trang chủ" autoFocus />
+            <input
+              value={form.title}
+              onChange={setField('title')}
+              placeholder="Ví dụ: Thiết kế trang chủ"
+              autoFocus
+            />
           </label>
 
           <label className="field">
             <span>Mô tả</span>
-            <textarea rows={3} value={form.description} onChange={setField('description')} placeholder="Mô tả chi tiết công việc..." />
+            <textarea
+              rows={3}
+              value={form.description}
+              onChange={setField('description')}
+              placeholder="Mô tả chi tiết công việc..."
+            />
           </label>
 
           <div className="grid-2">
@@ -139,7 +165,9 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
               <span>Trạng thái</span>
               <select value={form.status} onChange={setField('status')}>
                 {STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
+                  <option key={s.value} value={s.value}>
+                    {s.label}
+                  </option>
                 ))}
               </select>
             </label>
@@ -148,7 +176,9 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
               <span>Độ ưu tiên</span>
               <select value={form.priority} onChange={setField('priority')}>
                 {PRIORITIES.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
                 ))}
               </select>
             </label>
@@ -163,24 +193,15 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
               <select value={form.project} onChange={setField('project')}>
                 <option value="">— Không thuộc dự án —</option>
                 {projects.map((p) => (
-                  <option key={p._id} value={p._id}>{p.name}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="field">
-              <span>Người thực hiện</span>
-              <select value={form.assignee} onChange={setField('assignee')}>
-                <option value="">— Chưa giao —</option>
-                {users.map((u) => (
-                  <option key={u._id} value={u._id}>
-                    {u.name}{u._id === user?._id ? ' (bạn)' : ''}
+                  <option key={p._id} value={p._id}>
+                    {p.name}
                   </option>
                 ))}
               </select>
             </label>
 
-            <label className="field">
+
+            <label className="field field--full">
               <span>Thẻ (cách nhau bởi dấu phẩy)</span>
               <input value={form.tags} onChange={setField('tags')} placeholder="backend, gấp" />
             </label>
@@ -189,10 +210,13 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
           <div className="row-end">
             {isEdit && (
               <button type="button" className="btn btn--danger-ghost mr-auto" onClick={() => setConfirming(true)}>
+                <Icon name="trash" />
                 Xoá công việc
               </button>
             )}
-            <button type="button" className="btn btn--ghost" onClick={onClose}>Huỷ</button>
+            <button type="button" className="btn btn--ghost" onClick={onClose}>
+              Huỷ
+            </button>
             <button type="submit" className="btn btn--primary" disabled={saving}>
               {saving ? 'Đang lưu...' : isEdit ? 'Lưu thay đổi' : 'Tạo công việc'}
             </button>
@@ -201,33 +225,37 @@ export default function TaskDialog({ open, task, projects = [], users = [], onCl
 
         {isEdit && (
           <section className="comments">
-            <h3>Bình luận ({current?.comments?.length || 0})</h3>
+            <h3>Ghi chú ({current?.comments?.length || 0})</h3>
 
             <div className="comment-list">
               {current?.comments?.length ? (
                 current.comments.map((c) => (
                   <div key={c._id} className="comment">
-                    <Avatar user={c.author} size={30} />
                     <div className="comment__body">
                       <div className="comment__head">
-                        <strong>{c.author?.name}</strong>
                         <span className="muted-sm">{relativeTime(c.createdAt)}</span>
-                        {c.author?._id === user?._id && (
-                          <button type="button" className="link-danger" onClick={() => removeComment(c._id)}>Xoá</button>
-                        )}
+                        <button type="button" className="link-danger" onClick={() => removeComment(c._id)}>
+                          Xoá
+                        </button>
                       </div>
                       <p>{c.body}</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="muted-sm">Chưa có bình luận nào.</p>
+                <p className="muted-sm">Chưa có ghi chú nào.</p>
               )}
             </div>
 
             <form onSubmit={sendComment} className="comment-form">
-              <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Viết bình luận..." />
-              <button type="submit" className="btn btn--primary" disabled={!comment.trim()}>Gửi</button>
+              <input
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Thêm ghi chú về tiến độ..."
+              />
+              <button type="submit" className="btn btn--primary" disabled={!comment.trim()} aria-label="Gửi">
+                <Icon name="send" />
+              </button>
             </form>
           </section>
         )}
