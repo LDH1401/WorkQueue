@@ -24,7 +24,7 @@ async function seed() {
     name: 'Nguyễn Văn An',
     email: 'demo@workqueue.dev',
     password: '123456',
-    avatarColor: '#6366f1',
+    avatarColor: '#10b981',
   });
 
   console.log('→ Tạo dự án...');
@@ -32,7 +32,7 @@ async function seed() {
     {
       name: 'Website bán hàng',
       description: 'Xây dựng website thương mại điện tử cho khách hàng ABC',
-      color: '#6366f1',
+      color: '#10b981',
       owner: me._id,
     },
     {

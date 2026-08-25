@@ -15,6 +15,7 @@
   Không nhập giờ thì hiểu là hạn cuối ngày, nên việc đặt hạn theo ngày không bị báo quá hạn ngay từ sáng.
 - **Dự án**: tạo/sửa/xoá, màu nhận diện, theo dõi tiến độ.
 - **Dashboard**: thống kê tổng quan, tỉ lệ hoàn thành, việc quá hạn, deadline sắp tới.
+- **Chuỗi ngày đúng hẹn**: dải nổi bật đầu trang Tổng quan — số ngày liên tiếp không lỡ deadline, lịch 7 ngày gần nhất và kỷ lục cá nhân.
 - **Dữ liệu riêng tư**: mỗi tài khoản chỉ thấy công việc và dự án của chính mình.
 - **Giao diện sáng/tối**: 3 chế độ Sáng / Tối / Theo hệ thống, ghi nhớ lựa chọn.
 - Giao diện tiếng Việt, responsive (dùng tốt trên điện thoại).

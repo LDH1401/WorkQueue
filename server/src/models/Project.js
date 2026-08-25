@@ -9,7 +9,7 @@ const projectSchema = new mongoose.Schema(
       maxlength: [120, 'Tên dự án tối đa 120 ký tự'],
     },
     description: { type: String, trim: true, default: '', maxlength: 2000 },
-    color: { type: String, default: '#6366f1' },
+    color: { type: String, default: '#10b981' },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     archived: { type: Boolean, default: false },
   },

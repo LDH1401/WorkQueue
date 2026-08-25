@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 import Icon from '../components/icons';
+import StreakBanner from '../components/StreakBanner';
 import TaskDialog from '../components/TaskDialog';
 import { DashboardSkeleton, EmptyState, PriorityBadge, ProgressRing, StatusBadge, useCountUp } from '../components/ui';
 import { STATUSES } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import useWorkspace from '../hooks/useWorkspace';
 import { dueLabel } from '../utils/date';
+import { computeStreak } from '../utils/streak';
 
 function StatCard({ icon, label, value, hint, pill, tone = '' }) {
   const shown = useCountUp(value);
@@ -45,6 +47,9 @@ export default function Dashboard() {
 
   useEffect(load, []);
 
+  const streak = computeStreak(stats?.deadlines);
+
+
   const hour = new Date().getHours();
   const greeting =
     hour < 11 ? 'Chào buổi sáng' : hour < 14 ? 'Chào buổi trưa' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
@@ -77,6 +82,8 @@ export default function Dashboard() {
       ) : (
         stats && (
           <>
+            <StreakBanner streak={streak} />
+
             <section className="stat-grid">
               <StatCard
                 icon="clipboard"

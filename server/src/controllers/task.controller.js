@@ -198,7 +198,11 @@ export const taskStats = asyncHandler(async (req, res) => {
   const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
   const weekAgo = new Date(now.getTime() - 7 * 864e5);
 
-  const [byStatus, byPriority, overdue, dueToday, completedThisWeek, upcoming] = await Promise.all([
+  // Dữ liệu thô để client tự tính chuỗi ngày không trễ hạn theo múi giờ máy nó.
+  // Không tính sẵn ở đây vì server có thể chạy ở UTC, sẽ lệch ngày.
+  const streakSince = new Date(now.getTime() - 200 * 864e5);
+
+  const [byStatus, byPriority, overdue, dueToday, completedThisWeek, upcoming, deadlines] = await Promise.all([
     Task.aggregate([{ $match: access }, { $group: { _id: '$status', count: { $sum: 1 } } }]),
     Task.aggregate([{ $match: access }, { $group: { _id: '$priority', count: { $sum: 1 } } }]),
     Task.countDocuments({ $and: [access, { dueDate: { $lt: now }, status: { $ne: 'done' } }] }),
@@ -210,6 +214,10 @@ export const taskStats = asyncHandler(async (req, res) => {
       .populate(POPULATE)
       .sort('dueDate')
       .limit(5),
+    Task.find({ $and: [access, { dueDate: { $gte: streakSince, $lte: now } }] })
+      .select('dueDate completedAt status')
+      .sort('dueDate')
+      .lean(),
   ]);
 
   const toMap = (rows, keys) => {
@@ -233,6 +241,11 @@ export const taskStats = asyncHandler(async (req, res) => {
       inProgress: status.in_progress,
       completionRate: total ? Math.round((status.done / total) * 100) : 0,
       upcoming,
+      deadlines: deadlines.map((t) => ({
+        due: t.dueDate,
+        // Đúng hẹn = đã xong và xong trước hạn. Thiếu completedAt thì coi như đúng hẹn.
+        met: t.status === 'done' && (!t.completedAt || t.completedAt <= t.dueDate),
+      })),
     },
   });
 });

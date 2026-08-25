@@ -54,7 +54,7 @@ export function Avatar({ user, size = 32, title }) {
     );
   }
 
-  const color = user.avatarColor || '#5b5bd6';
+  const color = user.avatarColor || '#12864b';
   const initials = user.name
     .trim()
     .split(/\s+/)
@@ -124,9 +124,9 @@ export function ProgressRing({ value = 0, size = 132, stroke = 11, label = 'hoà
       <svg width={size} height={size}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#6366f1" />
-            <stop offset="55%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#d946ef" />
+            <stop offset="0%" stopColor="#059669" />
+            <stop offset="55%" stopColor="#10b981" />
+            <stop offset="100%" stopColor="#34d399" />
           </linearGradient>
         </defs>
         <circle className="ring__track" cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} />
