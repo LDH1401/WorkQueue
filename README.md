@@ -68,7 +68,7 @@ npm run dev
 WorkQueue/
 ├── vercel.json                   # Cấu hình deploy "tất cả trên Vercel"
 ├── api/
-│   └── [...path].js              # Điểm vào serverless (chỉ Vercel dùng)
+│   └── index.js                  # Điểm vào serverless (chỉ Vercel dùng)
 ├── server/                       # Backend Express
 │   ├── .env.example
 │   └── src/
@@ -164,7 +164,7 @@ Database luôn phải nằm trên **MongoDB Atlas** (MongoDB chạy trên máy c
 
 | File | Vai trò |
 | --- | --- |
-| [api/[...path].js](api/%5B...path%5D.js) | Điểm vào serverless, nhận mọi request `/api/*` rồi chuyển cho app Express |
+| [api/index.js](api/index.js) | Điểm vào serverless, nhận mọi request `/api/*` (rewrite từ `vercel.json`) rồi chuyển cho app Express |
 | [vercel.json](vercel.json) | Build frontend ra `client/dist`, mọi đường dẫn không phải `/api` trả về `index.html` |
 | `dependencies` trong [package.json](package.json) | Bản sao của `server/package.json` để Vercel cài được thư viện cho function |
 
