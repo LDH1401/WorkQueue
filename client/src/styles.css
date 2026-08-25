@@ -18,7 +18,12 @@
   --logo-glow: 0 6px 16px rgba(16, 185, 129, 0.34);
   --glow-strength: 0.16;
 
-  --canvas: #f7f7f9;
+  --canvas: #f6f9f7;
+  --canvas-glow:
+    radial-gradient(920px 640px at 6% -6%, rgba(16, 185, 129, 0.15) 0%, transparent 62%),
+    radial-gradient(780px 700px at 99% 6%, rgba(20, 184, 166, 0.12) 0%, transparent 60%),
+    radial-gradient(860px 720px at 52% 106%, rgba(52, 211, 153, 0.14) 0%, transparent 62%);
+  --surface-veil: rgba(255, 255, 255, 0.78);
   --surface: #ffffff;
   --surface-2: #fbfbfc;
   --surface-sunken: #f0f0f3;
@@ -79,7 +84,12 @@
     --logo-glow: 0 6px 20px rgba(52, 211, 153, 0.45);
     --glow-strength: 0.26;
 
-    --canvas: #0a0a0f;
+    --canvas: #070c0a;
+    --canvas-glow:
+      radial-gradient(920px 640px at 6% -6%, rgba(16, 185, 129, 0.2) 0%, transparent 62%),
+      radial-gradient(780px 700px at 99% 6%, rgba(13, 148, 136, 0.16) 0%, transparent 60%),
+      radial-gradient(860px 720px at 52% 106%, rgba(5, 150, 105, 0.18) 0%, transparent 62%);
+    --surface-veil: rgba(19, 19, 25, 0.72);
     --surface: #131319;
     --surface-2: #17171e;
     --surface-sunken: #101016;
@@ -126,7 +136,12 @@
   --logo-glow: 0 6px 20px rgba(52, 211, 153, 0.45);
   --glow-strength: 0.26;
 
-  --canvas: #0a0a0f;
+  --canvas: #070c0a;
+  --canvas-glow:
+    radial-gradient(920px 640px at 6% -6%, rgba(16, 185, 129, 0.2) 0%, transparent 62%),
+    radial-gradient(780px 700px at 99% 6%, rgba(13, 148, 136, 0.16) 0%, transparent 60%),
+    radial-gradient(860px 720px at 52% 106%, rgba(5, 150, 105, 0.18) 0%, transparent 62%);
+  --surface-veil: rgba(19, 19, 25, 0.72);
   --surface: #131319;
   --surface-2: #17171e;
   --surface-sunken: #101016;
@@ -165,6 +180,18 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+}
+
+/* Vệt sáng xanh phủ toàn màn hình.
+   Dùng phần tử giả cố định thay vì background-attachment: fixed
+   vì thuộc tính đó bị giật trên Safari iOS. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--canvas-glow);
+  pointer-events: none;
 }
 
 body {
@@ -259,7 +286,8 @@ a { color: inherit; text-decoration: none; }
   flex-direction: column;
   gap: 4px;
   padding: 18px 12px 14px;
-  background: var(--surface);
+  background: var(--surface-veil);
+  backdrop-filter: blur(16px);
   border-right: 1px solid var(--border);
   z-index: 45;
 }
@@ -1256,13 +1284,13 @@ input[type='date'] { cursor: text; }
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   background: var(--surface-sunken);
-  color: var(--text-3);
+  color: var(--text-2);
   font-family: inherit;
   font-size: 13px;
   cursor: pointer;
   transition: border-color 0.15s, background-color 0.15s, color 0.15s;
 }
-.sidebar-search:hover { border-color: var(--border-strong); color: var(--text-2); }
+.sidebar-search:hover { border-color: var(--border-strong); color: var(--text); }
 .sidebar-search svg { width: 15px; height: 15px; flex: none; }
 .sidebar-search span { flex: 1; text-align: left; }
 
@@ -1684,4 +1712,14 @@ kbd {
   .streak__flame svg { width: 28px; height: 28px; }
   .streak__count strong { font-size: 34px; }
   .streak__mark { width: 30px; height: 30px; }
+}
+
+/* ------------------- Icon lời chào ở trang Tổng quan -------------------- */
+.page-head h1 { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.greet-icon {
+  width: 25px;
+  height: 25px;
+  flex: none;
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, currentColor 45%, transparent));
 }

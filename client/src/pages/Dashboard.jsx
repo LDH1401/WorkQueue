@@ -50,9 +50,17 @@ export default function Dashboard() {
   const streak = computeStreak(stats?.deadlines);
 
 
+  // Lời chào kèm icon đổi theo buổi trong ngày
   const hour = new Date().getHours();
-  const greeting =
-    hour < 11 ? 'Chào buổi sáng' : hour < 14 ? 'Chào buổi trưa' : hour < 18 ? 'Chào buổi chiều' : 'Chào buổi tối';
+  const { greeting, icon: greetIcon, color: greetColor } =
+    hour < 11
+      ? { greeting: 'Chào buổi sáng', icon: 'sunrise', color: '#f59e0b' }
+      : hour < 14
+        ? { greeting: 'Chào buổi trưa', icon: 'sun', color: '#f59e0b' }
+        : hour < 18
+          ? { greeting: 'Chào buổi chiều', icon: 'sunset', color: '#f97316' }
+          : { greeting: 'Chào buổi tối', icon: 'moonStar', color: '#818cf8' };
+
   const firstName = user?.name?.trim().split(/\s+/).slice(-1)[0];
 
   return (
@@ -60,7 +68,8 @@ export default function Dashboard() {
       <header className="page-head">
         <div>
           <h1>
-            {greeting}, {firstName} 👋
+            {greeting}, {firstName}
+            <Icon name={greetIcon} className="greet-icon" style={{ color: greetColor }} />
           </h1>
           <p>Đây là tình hình công việc của bạn hôm nay.</p>
         </div>
