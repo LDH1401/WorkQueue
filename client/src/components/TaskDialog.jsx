@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { PRIORITIES, STATUSES } from '../constants';
 import { useToast } from '../context/ToastContext';
-import { relativeTime, toInputDate } from '../utils/date';
+import { joinDue, relativeTime, splitDue } from '../utils/date';
 import Icon from './icons';
+import Select from './Select';
 import { ConfirmDialog, Modal } from './ui';
 
 const EMPTY = {
@@ -12,6 +13,7 @@ const EMPTY = {
   status: 'todo',
   priority: 'medium',
   dueDate: '',
+  dueTime: '',
   project: '',
   tags: '',
 };
@@ -42,7 +44,8 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
             description: task.description || '',
             status: task.status || 'todo',
             priority: task.priority || 'medium',
-            dueDate: toInputDate(task.dueDate),
+            dueDate: splitDue(task.dueDate).date,
+            dueTime: splitDue(task.dueDate).time,
             project: task.project?._id || task.project || '',
             tags: (task.tags || []).join(', '),
           }
@@ -59,10 +62,11 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
     setSaving(true);
     setError('');
     try {
+      const { dueTime, ...rest } = form;
       const payload = {
-        ...form,
+        ...rest,
         title: form.title.trim(),
-        dueDate: form.dueDate || null,
+        dueDate: joinDue(form.dueDate, form.dueTime),
         project: form.project || null,
         tags: form.tags
           .split(',')
@@ -161,44 +165,65 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
           </label>
 
           <div className="grid-2">
-            <label className="field">
+            <div className="field">
               <span>Trạng thái</span>
-              <select value={form.status} onChange={setField('status')}>
-                {STATUSES.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <Select
+                value={form.status}
+                onChange={(v) => setForm((prev) => ({ ...prev, status: v }))}
+                ariaLabel="Trạng thái"
+                options={STATUSES.map((x) => ({ value: x.value, label: x.label, color: x.color }))}
+              />
+            </div>
 
-            <label className="field">
+            <div className="field">
               <span>Độ ưu tiên</span>
-              <select value={form.priority} onChange={setField('priority')}>
-                {PRIORITIES.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <Select
+                value={form.priority}
+                onChange={(v) => setForm((prev) => ({ ...prev, priority: v }))}
+                ariaLabel="Độ ưu tiên"
+                options={PRIORITIES.map((x) => ({ value: x.value, label: x.label, color: x.color }))}
+              />
+            </div>
 
-            <label className="field">
+            <div className="field">
               <span>Hạn chót</span>
-              <input type="date" value={form.dueDate} onChange={setField('dueDate')} />
-            </label>
+              <div className="due-inputs">
+                <input
+                  type="date"
+                  value={form.dueDate}
+                  onChange={(e) => {
+                    const date = e.target.value;
+                    // Xoá ngày thì bỏ luôn giờ cho khỏi mắc kẹt
+                    setForm((prev) => ({ ...prev, dueDate: date, dueTime: date ? prev.dueTime : '' }));
+                  }}
+                  aria-label="Ngày hết hạn"
+                />
+                <input
+                  type="time"
+                  value={form.dueTime}
+                  onChange={setField('dueTime')}
+                  disabled={!form.dueDate}
+                  placeholder="--:--"
+                  aria-label="Giờ hết hạn"
+                />
+              </div>
+              <small className="field__hint">
+                {form.dueDate && !form.dueTime ? 'Không nhập giờ = hạn cuối ngày' : 'Giờ là tuỳ chọn'}
+              </small>
+            </div>
 
-            <label className="field">
+            <div className="field">
               <span>Dự án</span>
-              <select value={form.project} onChange={setField('project')}>
-                <option value="">— Không thuộc dự án —</option>
-                {projects.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <Select
+                value={form.project}
+                onChange={(v) => setForm((prev) => ({ ...prev, project: v }))}
+                ariaLabel="Dự án"
+                options={[
+                  { value: '', label: 'Không thuộc dự án' },
+                  ...projects.map((x) => ({ value: x._id, label: x.name, color: x.color })),
+                ]}
+              />
+            </div>
 
 
             <label className="field field--full">

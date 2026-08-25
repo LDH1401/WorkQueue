@@ -123,6 +123,7 @@ const PATHS = {
       <path d="m16 17 5-5-5-5M21 12H9" />
     </>
   ),
+  chevronDown: <path d="m6 9 6 6 6-6" />,
   chevronLeft: <path d="m15 18-6-6 6-6" />,
   chevronRight: <path d="m9 18 6-6-6-6" />,
 };

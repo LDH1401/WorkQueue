@@ -11,7 +11,8 @@
 - **Bảng lệnh `Ctrl/⌘ + K`**: tìm công việc, nhảy trang, đổi giao diện. Tìm được cả khi gõ không dấu.
 - **Xoá an toàn**: xoá là xoá mềm, có nút **Hoàn tác** trong 7 giây; quá 30 ngày mới dọn hẳn.
 - **Danh sách công việc**: lọc theo trạng thái, độ ưu tiên, dự án, hạn chót; tìm kiếm; sắp xếp; phân trang.
-- **Công việc**: tiêu đề, mô tả, độ ưu tiên, hạn chót, thẻ (tag), dự án, **ghi chú tiến độ**.
+- **Công việc**: tiêu đề, mô tả, độ ưu tiên, hạn chót (ngày + **giờ tuỳ chọn**), thẻ (tag), dự án, **ghi chú tiến độ**.
+  Không nhập giờ thì hiểu là hạn cuối ngày, nên việc đặt hạn theo ngày không bị báo quá hạn ngay từ sáng.
 - **Dự án**: tạo/sửa/xoá, màu nhận diện, theo dõi tiến độ.
 - **Dashboard**: thống kê tổng quan, tỉ lệ hoàn thành, việc quá hạn, deadline sắp tới.
 - **Dữ liệu riêng tư**: mỗi tài khoản chỉ thấy công việc và dự án của chính mình.

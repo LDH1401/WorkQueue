@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import Icon from '../components/icons';
+import Select from '../components/Select';
 import TaskDialog from '../components/TaskDialog';
 import { EmptyState, ListSkeleton, PriorityBadge, StatusBadge } from '../components/ui';
 import { PRIORITIES, STATUSES } from '../constants';
@@ -121,49 +122,56 @@ export default function Tasks() {
           />
         </div>
 
-        <select value={query.status || ''} onChange={(e) => setFilter('status', e.target.value)}>
-          <option value="">Mọi trạng thái</option>
-          {STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={query.status || ''}
+          onChange={(v) => setFilter('status', v)}
+          ariaLabel="Lọc theo trạng thái"
+          options={[
+            { value: '', label: 'Mọi trạng thái' },
+            ...STATUSES.map((x) => ({ value: x.value, label: x.label, color: x.color })),
+          ]}
+        />
 
-        <select value={query.priority || ''} onChange={(e) => setFilter('priority', e.target.value)}>
-          <option value="">Mọi mức ưu tiên</option>
-          {PRIORITIES.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={query.priority || ''}
+          onChange={(v) => setFilter('priority', v)}
+          ariaLabel="Lọc theo mức ưu tiên"
+          options={[
+            { value: '', label: 'Mọi mức ưu tiên' },
+            ...PRIORITIES.map((x) => ({ value: x.value, label: x.label, color: x.color })),
+          ]}
+        />
 
-        <select value={query.project || ''} onChange={(e) => setFilter('project', e.target.value)}>
-          <option value="">Tất cả dự án</option>
-          <option value="none">Không thuộc dự án</option>
-          {projects.map((p) => (
-            <option key={p._id} value={p._id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={query.project || ''}
+          onChange={(v) => setFilter('project', v)}
+          ariaLabel="Lọc theo dự án"
+          options={[
+            { value: '', label: 'Tất cả dự án' },
+            { value: 'none', label: 'Không thuộc dự án' },
+            ...projects.map((x) => ({ value: x._id, label: x.name, color: x.color })),
+          ]}
+        />
 
 
-        <select value={query.due || ''} onChange={(e) => setFilter('due', e.target.value)}>
-          <option value="">Mọi hạn chót</option>
-          <option value="overdue">Quá hạn</option>
-          <option value="today">Hôm nay</option>
-          <option value="week">7 ngày tới</option>
-        </select>
+        <Select
+          value={query.due || ''}
+          onChange={(v) => setFilter('due', v)}
+          ariaLabel="Lọc theo hạn chót"
+          options={[
+            { value: '', label: 'Mọi hạn chót' },
+            { value: 'overdue', label: 'Quá hạn' },
+            { value: 'today', label: 'Hôm nay' },
+            { value: 'week', label: '7 ngày tới' },
+          ]}
+        />
 
-        <select value={query.sort || 'createdAt'} onChange={(e) => setFilter('sort', e.target.value)}>
-          {SORTS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={query.sort || 'createdAt'}
+          onChange={(v) => setFilter('sort', v)}
+          ariaLabel="Sắp xếp"
+          options={SORTS}
+        />
 
         {hasFilters && (
           <button type="button" className="btn btn--subtle" onClick={() => setParams({})}>

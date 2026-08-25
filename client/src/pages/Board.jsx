@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/client';
 import Icon from '../components/icons';
+import Select from '../components/Select';
 import TaskCard from '../components/TaskCard';
 import TaskDialog from '../components/TaskDialog';
 import { ListSkeleton } from '../components/ui';
@@ -121,25 +122,27 @@ export default function Board() {
           />
         </div>
 
-        <select value={query.project || ''} onChange={(e) => setFilter('project', e.target.value)}>
-          <option value="">Tất cả dự án</option>
-          <option value="none">Không thuộc dự án</option>
-          {projects.map((p) => (
-            <option key={p._id} value={p._id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={query.project || ''}
+          onChange={(v) => setFilter('project', v)}
+          ariaLabel="Lọc theo dự án"
+          options={[
+            { value: '', label: 'Tất cả dự án' },
+            { value: 'none', label: 'Không thuộc dự án' },
+            ...projects.map((p) => ({ value: p._id, label: p.name, color: p.color })),
+          ]}
+        />
 
 
-        <select value={query.priority || ''} onChange={(e) => setFilter('priority', e.target.value)}>
-          <option value="">Mọi mức ưu tiên</option>
-          {PRIORITIES.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={query.priority || ''}
+          onChange={(v) => setFilter('priority', v)}
+          ariaLabel="Lọc theo mức ưu tiên"
+          options={[
+            { value: '', label: 'Mọi mức ưu tiên' },
+            ...PRIORITIES.map((x) => ({ value: x.value, label: x.label, color: x.color })),
+          ]}
+        />
 
         {hasFilters && (
           <button type="button" className="btn btn--subtle" onClick={() => setParams({})}>
