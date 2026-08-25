@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useState } from 'react';
 import Icon from '../components/icons';
 
 const ToastContext = createContext(null);
-const ICONS = { success: 'check', error: 'alert', info: 'info' };
+const ICONS = { success: 'checkCircle', error: 'alert', info: 'info' };
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -13,8 +13,8 @@ export function ToastProvider({ children }) {
     (message, type = 'success', action = null) => {
       const id = Date.now() + Math.random();
       setToasts((prev) => [...prev, { id, message, type, action }]);
-      // Thông báo có nút hành động thì để lâu hơn cho kịp bấm
-      setTimeout(() => dismiss(id), action ? 7000 : 3500);
+      const duration = action ? 7000 : 3800;
+      setTimeout(() => dismiss(id), duration);
     },
     [dismiss]
   );
@@ -23,7 +23,6 @@ export function ToastProvider({ children }) {
     success: (m) => push(m, 'success'),
     error: (m) => push(m, 'error'),
     info: (m) => push(m, 'info'),
-    /** Thông báo kèm nút Hoàn tác */
     undo: (m, onUndo) => push(m, 'success', { label: 'Hoàn tác', run: onUndo }),
   };
 
@@ -34,7 +33,7 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast--${t.type}`}>
             <span className="toast__icon">
-              <Icon name={ICONS[t.type]} />
+              <Icon name={ICONS[t.type]} size={16} />
             </span>
             <span className="toast__msg">{t.message}</span>
             {t.action && (
@@ -49,6 +48,14 @@ export function ToastProvider({ children }) {
                 {t.action.label}
               </button>
             )}
+            <button
+              type="button"
+              className="toast__close"
+              onClick={() => dismiss(t.id)}
+              aria-label="Đóng"
+            >
+              <Icon name="x" size={13} />
+            </button>
           </div>
         ))}
       </div>

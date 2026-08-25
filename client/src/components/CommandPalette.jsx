@@ -1,19 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
-import { useTheme } from '../context/ThemeContext';
 import { statusMeta } from '../constants';
+import { useTheme } from '../context/ThemeContext';
 import Icon from './icons';
 
 const PAGES = [
   { id: 'p-home', icon: 'dashboard', label: 'Tổng quan', to: '/' },
   { id: 'p-board', icon: 'kanban', label: 'Bảng Kanban', to: '/board' },
-  { id: 'p-tasks', icon: 'tasks', label: 'Công việc', to: '/tasks' },
-  { id: 'p-projects', icon: 'folder', label: 'Dự án', to: '/projects' },
-  { id: 'p-settings', icon: 'user', label: 'Tài khoản', to: '/settings' },
+  { id: 'p-tasks', icon: 'tasks', label: 'Danh sách công việc', to: '/tasks' },
+  { id: 'p-projects', icon: 'folder', label: 'Quản lý dự án', to: '/projects' },
+  { id: 'p-settings', icon: 'user', label: 'Cài đặt tài khoản', to: '/settings' },
 ];
 
-/** Bỏ dấu tiếng Việt để "cong viec" vẫn khớp "công việc" */
 const norm = (s) =>
   s
     .toLowerCase()
@@ -31,7 +30,6 @@ export default function CommandPalette({ open, onClose }) {
   const listRef = useRef(null);
   const timer = useRef(null);
 
-  // Tìm công việc trên server, có trễ nhẹ để khỏi gọi API mỗi phím
   useEffect(() => {
     if (!open) return undefined;
     const q = query.trim();
@@ -48,7 +46,7 @@ export default function CommandPalette({ open, onClose }) {
       } catch {
         setTasks([]);
       }
-    }, 220);
+    }, 200);
 
     return () => clearTimeout(timer.current);
   }, [query, open]);
@@ -58,7 +56,7 @@ export default function CommandPalette({ open, onClose }) {
       setQuery('');
       setTasks([]);
       setActive(0);
-      setTimeout(() => inputRef.current?.focus(), 30);
+      setTimeout(() => inputRef.current?.focus(), 40);
     }
   }, [open]);
 
@@ -66,16 +64,15 @@ export default function CommandPalette({ open, onClose }) {
     () => [
       { id: 'a-new', icon: 'plus', label: 'Tạo công việc mới', hint: 'N', run: () => navigate('/tasks?new=1') },
       { id: 'a-project', icon: 'folder', label: 'Tạo dự án mới', run: () => navigate('/projects?new=1') },
-      { id: 'a-overdue', icon: 'clock', label: 'Xem việc quá hạn', run: () => navigate('/tasks?due=overdue') },
-      { id: 'a-today', icon: 'calendar', label: 'Việc đến hạn hôm nay', run: () => navigate('/tasks?due=today') },
-      { id: 'a-light', icon: 'sun', label: 'Chuyển giao diện Sáng', run: () => setTheme('light') },
-      { id: 'a-dark', icon: 'moon', label: 'Chuyển giao diện Tối', run: () => setTheme('dark') },
-      { id: 'a-system', icon: 'monitor', label: 'Giao diện theo hệ thống', run: () => setTheme('system') },
+      { id: 'a-overdue', icon: 'clock', label: 'Xem các việc quá hạn', run: () => navigate('/tasks?due=overdue') },
+      { id: 'a-today', icon: 'calendar', label: 'Xem việc đến hạn hôm nay', run: () => navigate('/tasks?due=today') },
+      { id: 'a-light', icon: 'sun', label: 'Chuyển sang giao diện Sáng', run: () => setTheme('light') },
+      { id: 'a-dark', icon: 'moon', label: 'Chuyển sang giao diện Tối', run: () => setTheme('dark') },
+      { id: 'a-system', icon: 'monitor', label: 'Giao diện theo hệ điều hành', run: () => setTheme('system') },
     ],
     [navigate, setTheme]
   );
 
-  // Gộp mọi mục thành một danh sách phẳng để điều khiển bằng phím mũi tên
   const groups = useMemo(() => {
     const q = norm(query.trim());
     const match = (label) => !q || norm(label).includes(q);
@@ -86,7 +83,7 @@ export default function CommandPalette({ open, onClose }) {
 
     if (tasks.length) {
       result.push({
-        title: 'Công việc',
+        title: 'Công việc khớp tìm kiếm',
         items: tasks.map((t) => ({
           id: t._id,
           icon: 'tasks',
@@ -97,8 +94,8 @@ export default function CommandPalette({ open, onClose }) {
         })),
       });
     }
-    if (pages.length) result.push({ title: 'Đi tới', items: pages.map((p) => ({ ...p, run: () => navigate(p.to) })) });
-    if (acts.length) result.push({ title: 'Hành động', items: acts });
+    if (pages.length) result.push({ title: 'Điều hướng trang', items: pages.map((p) => ({ ...p, run: () => navigate(p.to) })) });
+    if (acts.length) result.push({ title: 'Thao tác nhanh', items: acts });
 
     return result;
   }, [query, tasks, actions, navigate]);
@@ -126,13 +123,12 @@ export default function CommandPalette({ open, onClose }) {
       setActive((i) => (i - 1 + flat.length) % Math.max(1, flat.length));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      select(flat[active]);
+      if (flat[active]) select(flat[active]);
     } else if (e.key === 'Escape') {
       onClose();
     }
   };
 
-  // Cuộn mục đang chọn vào tầm nhìn
   useEffect(() => {
     listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
   }, [active]);
@@ -145,24 +141,32 @@ export default function CommandPalette({ open, onClose }) {
     <div className="overlay overlay--top" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="palette" role="dialog" aria-modal="true" aria-label="Bảng lệnh">
         <div className="palette__input">
-          <Icon name="search" />
+          <Icon name="search" className="palette__search-icon" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Tìm công việc, đi tới trang, hoặc chạy lệnh..."
+            placeholder="Tìm kiếm công việc, chuyển trang, đổi giao diện..."
             aria-label="Tìm kiếm"
           />
-          <kbd>esc</kbd>
+          {query && (
+            <button type="button" className="palette__clear" onClick={() => setQuery('')} aria-label="Xóa">
+              <Icon name="x" size={14} />
+            </button>
+          )}
+          <kbd className="palette__kbd-esc">esc</kbd>
         </div>
 
         <div className="palette__list" ref={listRef}>
           {flat.length === 0 ? (
-            <p className="palette__empty">Không tìm thấy gì phù hợp.</p>
+            <div className="palette__empty">
+              <Icon name="search" size={24} />
+              <p>Không tìm thấy kết quả phù hợp với "{query}".</p>
+            </div>
           ) : (
             groups.map((group) => (
-              <section key={group.title}>
+              <section key={group.title} className="palette__section">
                 <h4>{group.title}</h4>
                 {group.items.map((item) => {
                   index += 1;
@@ -176,14 +180,22 @@ export default function CommandPalette({ open, onClose }) {
                       onMouseEnter={() => setActive(i)}
                       onClick={() => select(item)}
                     >
-                      <Icon name={item.icon} />
+                      <span className="palette__item-icon">
+                        <Icon name={item.icon} />
+                      </span>
                       <span className="palette__label">{item.label}</span>
                       {item.meta && (
-                        <span className="badge" style={{ color: item.color, background: `${item.color}1f` }}>
+                        <span
+                          className="badge badge--sm"
+                          style={{
+                            color: item.color,
+                            background: `color-mix(in srgb, ${item.color} 14%, transparent)`,
+                          }}
+                        >
                           {item.meta}
                         </span>
                       )}
-                      {item.hint && <kbd>{item.hint}</kbd>}
+                      {item.hint && <kbd className="palette__item-hint">{item.hint}</kbd>}
                     </button>
                   );
                 })}
@@ -195,13 +207,13 @@ export default function CommandPalette({ open, onClose }) {
         <footer className="palette__foot">
           <span>
             <kbd>↑</kbd>
-            <kbd>↓</kbd> di chuyển
+            <kbd>↓</kbd> Di chuyển
           </span>
           <span>
-            <kbd>↵</kbd> chọn
+            <kbd>↵</kbd> Thực hiện
           </span>
           <span>
-            <kbd>esc</kbd> đóng
+            <kbd>Esc</kbd> Đóng
           </span>
         </footer>
       </div>

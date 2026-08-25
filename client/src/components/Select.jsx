@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Icon from './icons';
 
-/**
- * Dropdown thay cho <select> gốc.
- *
- * Lý do tự làm: danh sách xổ ra của <select> do hệ điều hành vẽ nên không đổi
- * được màu theo chế độ sáng/tối, cũng không chèn được chấm màu trạng thái.
- *
- * options: [{ value, label, color? }]
- */
 export default function Select({
   value,
   onChange,
@@ -28,8 +20,6 @@ export default function Select({
   const index = options.findIndex((o) => String(o.value) === String(value));
   const selected = index >= 0 ? options[index] : null;
 
-  /** Đặt vị trí bằng toạ độ tuyệt đối trên màn hình để không bị cắt
-   *  khi dropdown nằm trong vùng có thanh cuộn (hộp thoại chẳng hạn) */
   const place = useCallback(() => {
     const el = btnRef.current;
     if (!el) return;
@@ -72,7 +62,6 @@ export default function Select({
     if (open) setActive(Math.max(0, index));
   }, [open, index]);
 
-  // Cuộn mục đang chọn vào tầm nhìn
   useEffect(() => {
     if (open) document.querySelector(`#${listId} [data-active="true"]`)?.scrollIntoView({ block: 'nearest' });
   }, [active, open, listId]);
@@ -111,11 +100,10 @@ export default function Select({
       setActive(options.length - 1);
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      pick(options[active]);
+      if (options[active]) pick(options[active]);
     } else if (e.key === 'Tab') {
       setOpen(false);
     } else if (e.key.length === 1) {
-      // Gõ chữ để nhảy nhanh tới mục bắt đầu bằng chữ đó
       const now = Date.now();
       typed.current = {
         text: now - typed.current.at > 900 ? e.key : typed.current.text + e.key,
@@ -143,7 +131,7 @@ export default function Select({
         aria-label={ariaLabel}
       >
         {selected?.color && <i className="dot" style={{ background: selected.color }} />}
-        <span className={selected ? '' : 'select__placeholder'}>{selected ? selected.label : placeholder}</span>
+        <span className={selected ? 'select__text' : 'select__placeholder'}>{selected ? selected.label : placeholder}</span>
         <Icon name="chevronDown" className="select__caret" />
       </button>
 
@@ -160,22 +148,25 @@ export default function Select({
             maxHeight: pos.maxHeight,
           }}
         >
-          {options.map((o, i) => (
-            <button
-              key={String(o.value)}
-              type="button"
-              role="option"
-              aria-selected={String(o.value) === String(value)}
-              data-active={i === active}
-              className="select__option"
-              onMouseEnter={() => setActive(i)}
-              onClick={() => pick(o)}
-            >
-              {o.color && <i className="dot" style={{ background: o.color }} />}
-              <span>{o.label}</span>
-              {String(o.value) === String(value) && <Icon name="check" className="select__check" />}
-            </button>
-          ))}
+          {options.map((o, i) => {
+            const isSelected = String(o.value) === String(value);
+            return (
+              <button
+                key={String(o.value)}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                data-active={i === active}
+                className={`select__option${isSelected ? ' select__option--selected' : ''}`}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => pick(o)}
+              >
+                {o.color && <i className="dot" style={{ background: o.color }} />}
+                <span>{o.label}</span>
+                {isSelected && <Icon name="check" className="select__check" size={14} />}
+              </button>
+            );
+          })}
         </div>
       )}
     </>

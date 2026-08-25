@@ -68,7 +68,7 @@ export default function Projects() {
       if (editing?._id) await api.patch(`/projects/${editing._id}`, form);
       else await api.post('/projects', form);
 
-      toast.success(editing?._id ? 'Đã cập nhật dự án' : 'Đã tạo dự án mới');
+      toast.success(editing?._id ? 'Đã cập nhật dự án' : 'Đã tạo dự án mới thành công');
       setEditing(null);
       load();
     } catch (err) {
@@ -90,17 +90,22 @@ export default function Projects() {
     }
   };
 
+  const totalTasks = projects.reduce((sum, p) => sum + (p.stats?.total || 0), 0);
+  const totalDone = projects.reduce((sum, p) => sum + (p.stats?.done || 0), 0);
+  const overallRate = totalTasks ? Math.round((totalDone / totalTasks) * 100) : 0;
 
   return (
     <>
       <header className="page-head">
         <div>
-          <h1>Dự án</h1>
-          <p>Nhóm công việc theo từng dự án và theo dõi tiến độ.</p>
+          <h1>Quản lý dự án</h1>
+          <p>
+            Phân nhóm công việc theo từng mục tiêu dự án · Tổng cộng <strong className="num">{projects.length}</strong> dự án ({overallRate}% hoàn thành).
+          </p>
         </div>
         <button type="button" className="btn btn--primary" onClick={() => openDialog()}>
           <Icon name="plus" />
-          Dự án mới
+          Tạo dự án mới
         </button>
       </header>
 
@@ -110,11 +115,11 @@ export default function Projects() {
         <EmptyState
           icon="folder"
           title="Chưa có dự án nào"
-          description="Tạo dự án đầu tiên để bắt đầu tổ chức công việc."
+          description="Tạo dự án đầu tiên để bắt đầu phân loại và tổ chức công việc thông minh."
           action={
             <button type="button" className="btn btn--primary" onClick={() => openDialog()}>
               <Icon name="plus" />
-              Tạo dự án
+              Tạo dự án ngay
             </button>
           }
         />
@@ -125,38 +130,62 @@ export default function Projects() {
 
             return (
               <article key={project._id} className="project-card" style={{ '--project-color': project.color }}>
-                <header>
-                  <h3>{project.name}</h3>
+                <header className="project-card__header">
+                  <div className="project-card__title-box">
+                    <span className="project-card__dot" style={{ background: project.color }} />
+                    <h3>{project.name}</h3>
+                  </div>
                   <div className="project-card__actions">
-                    <button type="button" className="icon-btn" onClick={() => openDialog(project)} title="Sửa">
-                      <Icon name="pencil" />
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => openDialog(project)}
+                      title="Chỉnh sửa dự án"
+                      aria-label="Sửa"
+                    >
+                      <Icon name="pencil" size={15} />
                     </button>
                     <button
                       type="button"
                       className="icon-btn icon-btn--danger"
                       onClick={() => setDeleting(project)}
-                      title="Xoá"
+                      title="Xoá dự án"
+                      aria-label="Xóa"
                     >
-                      <Icon name="trash" />
+                      <Icon name="trash" size={15} />
                     </button>
                   </div>
                 </header>
 
-                <p className="project-card__desc">{project.description || 'Chưa có mô tả.'}</p>
+                <p className="project-card__desc">{project.description || 'Chưa có mô tả chi tiết.'}</p>
 
-                <div className="progress-thin">
-                  <span style={{ width: `${percent}%`, background: project.color }} />
+                <div className="project-card__stats">
+                  <div className="project-card__progress-head">
+                    <span className="muted-sm">Tiến độ hoàn thành</span>
+                    <strong className="num" style={{ color: project.color }}>{percent}%</strong>
+                  </div>
+                  <div className="progress-thin">
+                    <span style={{ width: `${percent}%`, background: project.color }} />
+                  </div>
+                  <span className="muted-sm num">
+                    {project.stats.done}/{project.stats.total} công việc đã xong
+                  </span>
                 </div>
-                <span className="muted-sm num">
-                  {project.stats.done}/{project.stats.total} công việc hoàn thành ({percent}%)
-                </span>
 
-                <footer>                  <Link to={`/board?project=${project._id}`} className="link">
-                    Xem bảng <Icon name="arrowRight" width={13} height={13} />
+                <footer className="project-card__footer">
+                  <Link to={`/board?project=${project._id}`} className="btn btn--ghost btn--sm">
+                    <Icon name="kanban" size={14} />
+                    Bảng Kanban
+                  </Link>
+                  <Link to={`/tasks?project=${project._id}`} className="btn btn--ghost btn--sm">
+                    <Icon name="tasks" size={14} />
+                    Danh sách việc
                   </Link>
                 </footer>
 
-                <small className="muted-sm">Tạo ngày {formatDate(project.createdAt)}</small>
+                <div className="project-card__meta">
+                  <small className="muted-sm">Tạo ngày {formatDate(project.createdAt)}</small>
+                </div>
               </article>
             );
           })}
@@ -166,13 +195,20 @@ export default function Projects() {
       <Modal
         open={Boolean(editing)}
         onClose={() => setEditing(null)}
-        title={editing?._id ? 'Sửa dự án' : 'Tạo dự án mới'}
+        title={
+          <div className="task-dialog__head-title">
+            <span className="task-dialog__title-icon">
+              <Icon name={editing?._id ? 'pencil' : 'plus'} />
+            </span>
+            <span>{editing?._id ? 'Chỉnh sửa dự án' : 'Tạo dự án mới'}</span>
+          </div>
+        }
       >
         <form onSubmit={submit} className="form">
           {error && (
             <div className="alert alert--error">
               <Icon name="alert" />
-              {error}
+              <span>{error}</span>
             </div>
           )}
 
@@ -181,23 +217,24 @@ export default function Projects() {
             <input
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ví dụ: Website bán hàng"
+              placeholder="Ví dụ: Nâng cấp Website thương mại điện tử..."
               autoFocus
+              className="input-prominent"
             />
           </label>
 
           <label className="field">
-            <span>Mô tả</span>
+            <span>Mô tả mục tiêu</span>
             <textarea
               rows={3}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              placeholder="Dự án này nhằm mục đích gì?"
+              placeholder="Mục đích, phạm vi hoặc ghi chú cho dự án này..."
             />
           </label>
 
           <div className="field">
-            <span>Màu nhận diện</span>
+            <span>Màu sắc nhận diện</span>
             <div className="color-picker">
               {PROJECT_COLORS.map((color) => (
                 <button
@@ -212,8 +249,7 @@ export default function Projects() {
             </div>
           </div>
 
-
-          <div className="row-end">
+          <div className="dialog-actions-row">
             <button type="button" className="btn btn--ghost" onClick={() => setEditing(null)}>
               Huỷ
             </button>
@@ -226,7 +262,7 @@ export default function Projects() {
 
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Xoá dự án?"
+        title="Xác nhận xoá dự án này?"
         message={`Dự án "${deleting?.name}" sẽ bị xoá. Các công việc bên trong vẫn được giữ lại nhưng không còn thuộc dự án nào.`}
         onConfirm={remove}
         onCancel={() => setDeleting(null)}

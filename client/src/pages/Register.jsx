@@ -8,6 +8,7 @@ export default function Register() {
   const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -38,24 +39,32 @@ export default function Register() {
 
       <div className="auth__panel">
         <div className="auth__card">
-          <h1>Tạo tài khoản</h1>
-          <p className="muted">Chỉ mất chưa đến một phút để bắt đầu.</p>
+          <div className="auth__header">
+            <h1>Tạo tài khoản mới</h1>
+            <p className="muted">Chỉ mất chưa đến một phút để bắt đầu quản lý công việc.</p>
+          </div>
 
           <form onSubmit={submit} className="form">
             {error && (
               <div className="alert alert--error">
                 <Icon name="alert" />
-                {error}
+                <span>{error}</span>
               </div>
             )}
 
             <label className="field">
-              <span>Họ và tên</span>
-              <input value={form.name} onChange={setField('name')} placeholder="Nguyễn Văn A" required />
+              <span>Họ và tên *</span>
+              <input
+                value={form.name}
+                onChange={setField('name')}
+                placeholder="Ví dụ: Nguyễn Văn An"
+                required
+                autoFocus
+              />
             </label>
 
             <label className="field">
-              <span>Email</span>
+              <span>Email *</span>
               <input
                 type="email"
                 value={form.email}
@@ -68,24 +77,35 @@ export default function Register() {
 
             <div className="grid-2">
               <label className="field">
-                <span>Mật khẩu</span>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={setField('password')}
-                  placeholder="Tối thiểu 6 ký tự"
-                  autoComplete="new-password"
-                  required
-                />
+                <span>Mật khẩu *</span>
+                <div className="input-with-action">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={setField('password')}
+                    placeholder="≥ 6 ký tự"
+                    autoComplete="new-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="input-action-btn"
+                    onClick={() => setShowPassword((v) => !v)}
+                    title={showPassword ? 'Ẩn' : 'Hiện'}
+                    aria-label="Hiển thị mật khẩu"
+                  >
+                    <Icon name={showPassword ? 'eyeOff' : 'eye'} size={15} />
+                  </button>
+                </div>
               </label>
 
               <label className="field">
-                <span>Xác nhận</span>
+                <span>Xác nhận mật khẩu *</span>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={form.confirm}
                   onChange={setField('confirm')}
-                  placeholder="Nhập lại"
+                  placeholder="Nhập lại mật khẩu"
                   autoComplete="new-password"
                   required
                 />
@@ -93,12 +113,19 @@ export default function Register() {
             </div>
 
             <button type="submit" className="btn btn--primary btn--lg btn--block" disabled={loading}>
-              {loading ? 'Đang tạo tài khoản...' : 'Đăng ký'}
+              {loading ? (
+                <>
+                  <span className="spinner spinner--sm" />
+                  Đang tạo tài khoản...
+                </>
+              ) : (
+                'Tạo tài khoản'
+              )}
             </button>
           </form>
 
           <p className="auth__foot">
-            Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
+            Đã có tài khoản? <Link to="/login" className="link-highlight">Đăng nhập ngay</Link>
           </p>
         </div>
       </div>

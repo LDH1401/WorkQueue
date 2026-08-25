@@ -9,6 +9,7 @@ import { ListSkeleton } from '../components/ui';
 import { PRIORITIES, STATUSES } from '../constants';
 import { useToast } from '../context/ToastContext';
 import useWorkspace from '../hooks/useWorkspace';
+import { fireConfetti } from '../utils/confetti';
 
 const EMPTY_COLUMNS = Object.fromEntries(STATUSES.map((s) => [s.value, []]));
 
@@ -69,8 +70,35 @@ export default function Board() {
     next[status] = target;
     setColumns(next);
 
+    if (status === 'done' && from !== 'done') {
+      fireConfetti(0.7, 0.4);
+    }
+
     try {
       await api.patch(`/tasks/${task._id}/move`, { status, index: insertAt });
+    } catch (err) {
+      toast.error(err.message);
+      load();
+    }
+  };
+
+  /** Thao tác đánh dấu hoàn thành trực tiếp trên thẻ */
+  const toggleComplete = async (task) => {
+    const nextStatus = task.status === 'done' ? 'todo' : 'done';
+    const from = task.status;
+
+    const next = { ...columns };
+    next[from] = next[from].filter((t) => t._id !== task._id);
+    next[nextStatus] = [{ ...task, status: nextStatus }, ...next[nextStatus]];
+    setColumns(next);
+
+    if (nextStatus === 'done') {
+      fireConfetti(0.7, 0.4);
+      toast.success('Đã hoàn thành công việc! 🎉');
+    }
+
+    try {
+      await api.patch(`/tasks/${task._id}`, { status: nextStatus });
     } catch (err) {
       toast.error(err.message);
       load();
@@ -84,9 +112,11 @@ export default function Board() {
 
     const project = query.project && query.project !== 'none' ? query.project : null;
     setDraft('');
+    setAdding(null);
 
     try {
       await api.post('/tasks', { title, status, project });
+      toast.success('Đã tạo công việc');
       load();
     } catch (err) {
       toast.error(err.message);
@@ -94,17 +124,20 @@ export default function Board() {
   };
 
   const hasFilters = params.toString().length > 0;
+  const totalTasks = Object.values(columns).reduce((acc, list) => acc + list.length, 0);
 
   return (
     <>
       <header className="page-head">
         <div>
           <h1>Bảng Kanban</h1>
-          <p>Kéo thả thẻ để đổi trạng thái công việc.</p>
+          <p>
+            Kéo thả thẻ để cập nhật trạng thái · Tổng số <strong className="num">{totalTasks}</strong> công việc
+          </p>
         </div>
         <button type="button" className="btn btn--primary" onClick={() => setDialog({})}>
           <Icon name="plus" />
-          Công việc mới
+          Tạo công việc mới
         </button>
       </header>
 
@@ -112,14 +145,28 @@ export default function Board() {
         <div className="search-wrap">
           <Icon name="search" />
           <input
-            placeholder="Tìm theo tiêu đề, mô tả, thẻ..."
+            placeholder="Tìm theo tên, mô tả, thẻ..."
             defaultValue={query.q || ''}
             onChange={(e) => {
               const value = e.target.value;
               clearTimeout(searchTimer.current);
-              searchTimer.current = setTimeout(() => setFilter('q', value), 350);
+              searchTimer.current = setTimeout(() => setFilter('q', value), 300);
             }}
           />
+          {query.q && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => {
+                const searchInput = document.querySelector('.search-wrap input');
+                if (searchInput) searchInput.value = '';
+                setFilter('q', '');
+              }}
+              aria-label="Xóa tìm kiếm"
+            >
+              <Icon name="x" size={13} />
+            </button>
+          )}
         </div>
 
         <Select
@@ -133,7 +180,6 @@ export default function Board() {
           ]}
         />
 
-
         <Select
           value={query.priority || ''}
           onChange={(v) => setFilter('priority', v)}
@@ -145,8 +191,8 @@ export default function Board() {
         />
 
         {hasFilters && (
-          <button type="button" className="btn btn--subtle" onClick={() => setParams({})}>
-            <Icon name="x" />
+          <button type="button" className="btn btn--subtle btn--clear-filter" onClick={() => setParams({})}>
+            <Icon name="x" size={14} />
             Xoá bộ lọc
           </button>
         )}
@@ -163,7 +209,7 @@ export default function Board() {
             return (
               <section
                 key={status.value}
-                className={`column${isOver ? ' column--over' : ''}`}
+                className={`column${isOver ? ' column--over' : ''} column--${status.value}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   if (items.length === 0) setOver({ status: status.value, index: 0 });
@@ -202,13 +248,19 @@ export default function Board() {
                           setOver(null);
                         }}
                         onClick={setDialog}
+                        onToggleComplete={toggleComplete}
                       />
                     </div>
                   ))}
 
                   {isOver && over.index >= items.length && <div className="drop-line" />}
 
-                  {items.length === 0 && !isOver && <p className="column__empty">Kéo thẻ vào đây</p>}
+                  {items.length === 0 && !isOver && (
+                    <div className="column__empty">
+                      <Icon name="inbox" size={20} />
+                      <p>Kéo thẻ hoặc bấm thêm mới</p>
+                    </div>
+                  )}
                 </div>
 
                 {adding === status.value ? (
@@ -224,7 +276,7 @@ export default function Board() {
                       rows={2}
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
-                      placeholder="Tiêu đề công việc..."
+                      placeholder="Tiêu đề công việc mới..."
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
@@ -264,8 +316,8 @@ export default function Board() {
                       setAdding(status.value);
                     }}
                   >
-                    <Icon name="plus" />
-                    Thêm công việc
+                    <Icon name="plus" size={14} />
+                    <span>Thêm công việc</span>
                   </button>
                 )}
               </section>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/client';
 import { PRIORITIES, STATUSES } from '../constants';
 import { useToast } from '../context/ToastContext';
+import { fireConfetti } from '../utils/confetti';
 import { joinDue, relativeTime, splitDue } from '../utils/date';
 import Icon from './icons';
 import Select from './Select';
@@ -18,10 +19,6 @@ const EMPTY = {
   tags: '',
 };
 
-/**
- * Hộp thoại tạo mới / chỉnh sửa công việc.
- * task = null -> chế độ tạo mới
- */
 export default function TaskDialog({ open, task, projects = [], onClose, onSaved, onDeleted }) {
   const toast = useToast();
   const [form, setForm] = useState(EMPTY);
@@ -55,6 +52,19 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
 
   const setField = (name) => (e) => setForm((prev) => ({ ...prev, [name]: e.target.value }));
 
+  /** Quick due date presets */
+  const setQuickDate = (daysAhead) => {
+    if (daysAhead === null) {
+      setForm((prev) => ({ ...prev, dueDate: '', dueTime: '' }));
+      return;
+    }
+    const d = new Date();
+    d.setDate(d.getDate() + daysAhead);
+    const pad = (n) => String(n).padStart(2, '0');
+    const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    setForm((prev) => ({ ...prev, dueDate: dateStr }));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     if (!form.title.trim()) return setError('Vui lòng nhập tiêu đề công việc');
@@ -74,7 +84,14 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
           .filter(Boolean),
       };
 
+      const wasNotDone = !task || task.status !== 'done';
+      const isNowDone = payload.status === 'done';
+
       const { data } = isEdit ? await api.patch(`/tasks/${task._id}`, payload) : await api.post('/tasks', payload);
+
+      if (wasNotDone && isNowDone) {
+        fireConfetti(0.5, 0.4);
+      }
 
       toast.success(isEdit ? 'Đã cập nhật công việc' : 'Đã tạo công việc mới');
       onSaved?.(data.task);
@@ -118,6 +135,7 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
       setCurrent(data.task);
       onSaved?.(data.task, { silent: true });
       setComment('');
+      toast.success('Đã thêm ghi chú');
     } catch (err) {
       toast.error(err.message);
     }
@@ -128,6 +146,7 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
       const { data } = await api.delete(`/tasks/${task._id}/comments/${commentId}`);
       setCurrent(data.task);
       onSaved?.(data.task, { silent: true });
+      toast.info('Đã xóa ghi chú');
     } catch (err) {
       toast.error(err.message);
     }
@@ -135,7 +154,19 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
 
   return (
     <>
-      <Modal open={open} onClose={onClose} title={isEdit ? 'Chi tiết công việc' : 'Tạo công việc mới'} width={660}>
+      <Modal
+        open={open}
+        onClose={onClose}
+        title={
+          <div className="task-dialog__head-title">
+            <span className="task-dialog__title-icon">
+              <Icon name={isEdit ? 'pencil' : 'plus'} />
+            </span>
+            <span>{isEdit ? 'Chi tiết công việc' : 'Tạo công việc mới'}</span>
+          </div>
+        }
+        width={680}
+      >
         <form onSubmit={submit} className="form">
           {error && (
             <div className="alert alert--error">
@@ -145,22 +176,23 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
           )}
 
           <label className="field">
-            <span>Tiêu đề *</span>
+            <span>Tiêu đề công việc *</span>
             <input
               value={form.title}
               onChange={setField('title')}
-              placeholder="Ví dụ: Thiết kế trang chủ"
+              placeholder="Ví dụ: Thiết kế giao diện trang chủ..."
               autoFocus
+              className="input-prominent"
             />
           </label>
 
           <label className="field">
-            <span>Mô tả</span>
+            <span>Mô tả chi tiết</span>
             <textarea
               rows={3}
               value={form.description}
               onChange={setField('description')}
-              placeholder="Mô tả chi tiết công việc..."
+              placeholder="Thêm mô tả, yêu cầu kỹ thuật hoặc mục tiêu cụ thể..."
             />
           </label>
 
@@ -185,15 +217,32 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
               />
             </div>
 
-            <div className="field">
-              <span>Hạn chót</span>
+            <div className="field field--full">
+              <div className="field-header-row">
+                <span>Hạn chót</span>
+                <div className="due-presets">
+                  <button type="button" className="due-preset-btn" onClick={() => setQuickDate(0)}>
+                    Hôm nay
+                  </button>
+                  <button type="button" className="due-preset-btn" onClick={() => setQuickDate(1)}>
+                    Ngày mai
+                  </button>
+                  <button type="button" className="due-preset-btn" onClick={() => setQuickDate(7)}>
+                    +7 ngày
+                  </button>
+                  {form.dueDate && (
+                    <button type="button" className="due-preset-btn due-preset-btn--clear" onClick={() => setQuickDate(null)}>
+                      Xóa hạn
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="due-inputs">
                 <input
                   type="date"
                   value={form.dueDate}
                   onChange={(e) => {
                     const date = e.target.value;
-                    // Xoá ngày thì bỏ luôn giờ cho khỏi mắc kẹt
                     setForm((prev) => ({ ...prev, dueDate: date, dueTime: date ? prev.dueTime : '' }));
                   }}
                   aria-label="Ngày hết hạn"
@@ -208,7 +257,7 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
                 />
               </div>
               <small className="field__hint">
-                {form.dueDate && !form.dueTime ? 'Không nhập giờ = hạn cuối ngày' : 'Giờ là tuỳ chọn'}
+                {form.dueDate && !form.dueTime ? 'Không nhập giờ = tính hạn cuối ngày (23:59)' : 'Giờ là tùy chọn'}
               </small>
             </div>
 
@@ -225,14 +274,13 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
               />
             </div>
 
-
-            <label className="field field--full">
-              <span>Thẻ (cách nhau bởi dấu phẩy)</span>
-              <input value={form.tags} onChange={setField('tags')} placeholder="backend, gấp" />
+            <label className="field">
+              <span>Thẻ (tags)</span>
+              <input value={form.tags} onChange={setField('tags')} placeholder="ui, frontend, quan-trong..." />
             </label>
           </div>
 
-          <div className="row-end">
+          <div className="dialog-actions-row">
             {isEdit && (
               <button type="button" className="btn btn--danger-ghost mr-auto" onClick={() => setConfirming(true)}>
                 <Icon name="trash" />
@@ -250,7 +298,12 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
 
         {isEdit && (
           <section className="comments">
-            <h3>Ghi chú ({current?.comments?.length || 0})</h3>
+            <div className="comments-head">
+              <h3>
+                <Icon name="message" size={16} />
+                Ghi chú & Trao đổi ({current?.comments?.length || 0})
+              </h3>
+            </div>
 
             <div className="comment-list">
               {current?.comments?.length ? (
@@ -258,9 +311,9 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
                   <div key={c._id} className="comment">
                     <div className="comment__body">
                       <div className="comment__head">
-                        <span className="muted-sm">{relativeTime(c.createdAt)}</span>
-                        <button type="button" className="link-danger" onClick={() => removeComment(c._id)}>
-                          Xoá
+                        <span className="comment__time">{relativeTime(c.createdAt)}</span>
+                        <button type="button" className="link-danger" onClick={() => removeComment(c._id)} title="Xóa ghi chú">
+                          <Icon name="trash" size={13} />
                         </button>
                       </div>
                       <p>{c.body}</p>
@@ -268,7 +321,9 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
                   </div>
                 ))
               ) : (
-                <p className="muted-sm">Chưa có ghi chú nào.</p>
+                <div className="comment-empty">
+                  <p>Chưa có ghi chú nào. Hãy thêm ghi chú về tiến độ hoặc lưu ý!</p>
+                </div>
               )}
             </div>
 
@@ -276,10 +331,11 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
               <input
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Thêm ghi chú về tiến độ..."
+                placeholder="Nhập ghi chú hoặc cập nhật tiến độ..."
               />
-              <button type="submit" className="btn btn--primary" disabled={!comment.trim()} aria-label="Gửi">
+              <button type="submit" className="btn btn--primary" disabled={!comment.trim()} aria-label="Gửi ghi chú">
                 <Icon name="send" />
+                <span>Gửi</span>
               </button>
             </form>
           </section>
@@ -288,8 +344,8 @@ export default function TaskDialog({ open, task, projects = [], onClose, onSaved
 
       <ConfirmDialog
         open={confirming}
-        title="Xoá công việc?"
-        message={`Công việc "${task?.title}" sẽ bị xoá vĩnh viễn. Bạn có chắc chắn không?`}
+        title="Xoá công việc này?"
+        message={`Công việc "${task?.title}" sẽ bị xoá. Bạn vẫn có thể hoàn tác ngay sau khi xoá.`}
         onConfirm={remove}
         onCancel={() => setConfirming(false)}
       />

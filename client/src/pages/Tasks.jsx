@@ -8,6 +8,7 @@ import { EmptyState, ListSkeleton, PriorityBadge, StatusBadge } from '../compone
 import { PRIORITIES, STATUSES } from '../constants';
 import { useToast } from '../context/ToastContext';
 import useWorkspace from '../hooks/useWorkspace';
+import { fireConfetti } from '../utils/confetti';
 import { dueLabel } from '../utils/date';
 
 const SORTS = [
@@ -25,13 +26,13 @@ export default function Tasks() {
   const [data, setData] = useState({ items: [], total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(true);
   const [dialog, setDialog] = useState(null);
+  const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
   const searchTimer = useRef(null);
 
   const query = Object.fromEntries(params);
 
   const load = useCallback(async () => {
     try {
-      // new/task chỉ là lệnh mở hộp thoại, không phải điều kiện lọc
       const { new: _n, task: _t, ...filters } = Object.fromEntries(params);
       const res = await api.get('/tasks', { params: { limit: 15, ...filters } });
       setData(res.data);
@@ -83,8 +84,15 @@ export default function Tasks() {
   };
 
   const toggleDone = async (task) => {
+    const nextStatus = task.status === 'done' ? 'todo' : 'done';
     try {
-      await api.patch(`/tasks/${task._id}`, { status: task.status === 'done' ? 'todo' : 'done' });
+      await api.patch(`/tasks/${task._id}`, { status: nextStatus });
+      if (nextStatus === 'done') {
+        fireConfetti(0.5, 0.4);
+        toast.success(`Đã hoàn thành "${task.title}"! 🎉`);
+      } else {
+        toast.info(`Đã mở lại "${task.title}"`);
+      }
       load();
     } catch (err) {
       toast.error(err.message);
@@ -97,29 +105,64 @@ export default function Tasks() {
     <>
       <header className="page-head">
         <div>
-          <h1>Công việc</h1>
+          <h1>Danh sách công việc</h1>
           <p>
-            <span className="num">{data.total}</span> công việc phù hợp với bộ lọc hiện tại.
+            Tìm thấy <strong className="num">{data.total}</strong> công việc phù hợp với điều kiện tìm kiếm.
           </p>
         </div>
-        <button type="button" className="btn btn--primary" onClick={() => setDialog({})}>
-          <Icon name="plus" />
-          Công việc mới
-        </button>
+        <div className="page-head__actions">
+          <div className="view-toggle" role="group" aria-label="Kiểu hiển thị">
+            <button
+              type="button"
+              className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+              onClick={() => setViewMode('table')}
+              title="Dạng bảng"
+            >
+              <Icon name="list" size={16} />
+            </button>
+            <button
+              type="button"
+              className={`view-toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+              onClick={() => setViewMode('cards')}
+              title="Dạng thẻ lưới"
+            >
+              <Icon name="layoutGrid" size={16} />
+            </button>
+          </div>
+
+          <button type="button" className="btn btn--primary" onClick={() => setDialog({})}>
+            <Icon name="plus" />
+            Tạo công việc mới
+          </button>
+        </div>
       </header>
 
       <div className="filters">
         <div className="search-wrap">
           <Icon name="search" />
           <input
-            placeholder="Tìm công việc..."
+            placeholder="Tìm theo tên, mô tả, thẻ..."
             defaultValue={query.q || ''}
             onChange={(e) => {
               const value = e.target.value;
               clearTimeout(searchTimer.current);
-              searchTimer.current = setTimeout(() => setFilter('q', value), 350);
+              searchTimer.current = setTimeout(() => setFilter('q', value), 300);
             }}
           />
+          {query.q && (
+            <button
+              type="button"
+              className="search-clear-btn"
+              onClick={() => {
+                const searchInput = document.querySelector('.search-wrap input');
+                if (searchInput) searchInput.value = '';
+                setFilter('q', '');
+              }}
+              aria-label="Xóa tìm kiếm"
+            >
+              <Icon name="x" size={13} />
+            </button>
+          )}
         </div>
 
         <Select
@@ -153,7 +196,6 @@ export default function Tasks() {
           ]}
         />
 
-
         <Select
           value={query.due || ''}
           onChange={(v) => setFilter('due', v)}
@@ -174,8 +216,8 @@ export default function Tasks() {
         />
 
         {hasFilters && (
-          <button type="button" className="btn btn--subtle" onClick={() => setParams({})}>
-            <Icon name="x" />
+          <button type="button" className="btn btn--subtle btn--clear-filter" onClick={() => setParams({})}>
+            <Icon name="x" size={14} />
             Xoá bộ lọc
           </button>
         )}
@@ -187,45 +229,70 @@ export default function Tasks() {
         <EmptyState
           icon="search"
           title="Không tìm thấy công việc nào"
-          description="Thử đổi bộ lọc hoặc tạo một công việc mới."
+          description="Thử đổi tiêu chí tìm kiếm hoặc tạo một công việc mới."
           action={
             <button type="button" className="btn btn--primary" onClick={() => setDialog({})}>
               <Icon name="plus" />
-              Tạo công việc
+              Tạo công việc ngay
             </button>
           }
         />
-      ) : (
+      ) : viewMode === 'table' ? (
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
                 <th style={{ width: 44 }} />
-                <th>Công việc</th>
-                <th style={{ width: 132 }}>Trạng thái</th>
-                <th style={{ width: 118 }}>Ưu tiên</th>
-                <th style={{ width: 148 }}>Hạn chót</th>
+                <th>Tên công việc & Dự án</th>
+                <th style={{ width: 140 }}>Trạng thái</th>
+                <th style={{ width: 130 }}>Ưu tiên</th>
+                <th style={{ width: 160 }}>Hạn chót</th>
+                <th style={{ width: 60 }} />
               </tr>
             </thead>
             <tbody>
               {data.items.map((task) => {
                 const due = dueLabel(task.dueDate, task.status);
+                const isDone = task.status === 'done';
                 return (
-                  <tr key={task._id} className={task.status === 'done' ? 'row--done' : ''}>
+                  <tr key={task._id} className={isDone ? 'row--done' : ''}>
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={task.status === 'done'}
-                        onChange={() => toggleDone(task)}
-                        title="Đánh dấu hoàn thành"
-                      />
+                      <label className="checkbox-custom">
+                        <input
+                          type="checkbox"
+                          checked={isDone}
+                          onChange={() => toggleDone(task)}
+                          title={isDone ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
+                        />
+                        <span className="checkbox-box">
+                          <Icon name="check" size={12} />
+                        </span>
+                      </label>
                     </td>
                     <td>
                       <button type="button" className="cell-title" onClick={() => setDialog(task)}>
                         <strong>{task.title}</strong>
-                        <span className="muted-sm">
-                          {task.project?.name || 'Không thuộc dự án'}
-                          {task.tags?.length > 0 && ` · ${task.tags.map((t) => `#${t}`).join(' ')}`}
+                        <span className="muted-sm cell-meta">
+                          {task.project ? (
+                            <span className="chip chip--project" style={{ color: task.project.color, background: `${task.project.color}15` }}>
+                              <i className="dot" style={{ background: task.project.color }} />
+                              {task.project.name}
+                            </span>
+                          ) : (
+                            <span>Không thuộc dự án</span>
+                          )}
+                          {task.tags?.length > 0 &&
+                            task.tags.map((t) => (
+                              <span key={t} className="tag">
+                                #{t}
+                              </span>
+                            ))}
+                          {task.comments?.length > 0 && (
+                            <span className="comment-badge" title={`${task.comments.length} ghi chú`}>
+                              <Icon name="message" size={11} />
+                              {task.comments.length}
+                            </span>
+                          )}
                         </span>
                       </button>
                     </td>
@@ -238,18 +305,85 @@ export default function Tasks() {
                     <td>
                       {due ? (
                         <span className={`due due--${due.tone}`}>
-                          <Icon name="calendar" />
+                          <Icon name="calendar" size={13} />
                           {due.text}
                         </span>
                       ) : (
                         <span className="muted-sm">—</span>
                       )}
                     </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--edit"
+                        onClick={() => setDialog(task)}
+                        title="Chỉnh sửa chi tiết"
+                      >
+                        <Icon name="pencil" size={15} />
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="task-cards-grid">
+          {data.items.map((task) => {
+            const due = dueLabel(task.dueDate, task.status);
+            const isDone = task.status === 'done';
+            return (
+              <article
+                key={task._id}
+                className={`task-card-item ${isDone ? 'task-card-item--done' : ''}`}
+                onClick={() => setDialog(task)}
+              >
+                <div className="task-card-item__top">
+                  <PriorityBadge priority={task.priority} />
+                  <StatusBadge status={task.status} />
+                  <button
+                    type="button"
+                    className={`task-card-item__check ${isDone ? 'checked' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleDone(task);
+                    }}
+                    title={isDone ? 'Đánh dấu chưa xong' : 'Hoàn thành'}
+                  >
+                    <Icon name="check" size={12} />
+                  </button>
+                </div>
+
+                <h4 className="task-card-item__title">{task.title}</h4>
+
+                {task.description && (
+                  <p className="task-card-item__desc">{task.description}</p>
+                )}
+
+                <div className="task-card-item__foot">
+                  {task.project ? (
+                    <span
+                      className="chip chip--project"
+                      style={{ color: task.project.color, background: `${task.project.color}15` }}
+                    >
+                      <i className="dot" style={{ background: task.project.color }} />
+                      {task.project.name}
+                    </span>
+                  ) : (
+                    <span className="muted-sm">Chưa gắn dự án</span>
+                  )}
+
+                  {due && (
+                    <span className={`due due--${due.tone}`}>
+                      <Icon name="calendar" size={12} />
+                      {due.text}
+                    </span>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 
@@ -262,10 +396,10 @@ export default function Tasks() {
             onClick={() => setFilter('page', String(data.page - 1))}
           >
             <Icon name="chevronLeft" />
-            Trước
+            Trang trước
           </button>
-          <span className="muted-sm num">
-            Trang {data.page} / {data.pages}
+          <span className="pagination-info num">
+            Trang <strong>{data.page}</strong> / <strong>{data.pages}</strong>
           </span>
           <button
             type="button"
@@ -273,7 +407,7 @@ export default function Tasks() {
             disabled={data.page >= data.pages}
             onClick={() => setFilter('page', String(data.page + 1))}
           >
-            Sau
+            Trang sau
             <Icon name="chevronRight" />
           </button>
         </div>

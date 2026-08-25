@@ -2,14 +2,23 @@ import { dueLabel } from '../utils/date';
 import Icon from './icons';
 import { PriorityBadge } from './ui';
 
-export default function TaskCard({ task, onClick, draggable = false, dragging = false, onDragStart, onDragEnd }) {
+export default function TaskCard({
+  task,
+  onClick,
+  onToggleComplete,
+  draggable = false,
+  dragging = false,
+  onDragStart,
+  onDragEnd,
+}) {
   const due = dueLabel(task.dueDate, task.status);
+  const isDone = task.status === 'done';
 
   return (
     <article
       className={[
         'task-card',
-        task.status === 'done' && 'task-card--done',
+        isDone && 'task-card--done',
         dragging && 'task-card--dragging',
       ]
         .filter(Boolean)
@@ -25,13 +34,40 @@ export default function TaskCard({ task, onClick, draggable = false, dragging = 
       <div className="task-card__top">
         <PriorityBadge priority={task.priority} />
         {task.project && (
-          <span className="chip" style={{ color: task.project.color, background: `${task.project.color}1f` }}>
+          <span
+            className="chip chip--project"
+            style={{
+              color: task.project.color,
+              background: `color-mix(in srgb, ${task.project.color} 12%, transparent)`,
+              borderColor: `color-mix(in srgb, ${task.project.color} 25%, transparent)`,
+            }}
+          >
+            <i className="dot" style={{ background: task.project.color }} />
             {task.project.name}
           </span>
+        )}
+
+        {onToggleComplete && (
+          <button
+            type="button"
+            className={`task-card__check-btn ${isDone ? 'checked' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComplete(task);
+            }}
+            title={isDone ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
+            aria-label="Đổi trạng thái"
+          >
+            <Icon name={isDone ? 'check' : 'check'} />
+          </button>
         )}
       </div>
 
       <h4 className="task-card__title">{task.title}</h4>
+
+      {task.description && (
+        <p className="task-card__desc">{task.description}</p>
+      )}
 
       {task.tags?.length > 0 && (
         <div className="tag-list">
@@ -40,7 +76,7 @@ export default function TaskCard({ task, onClick, draggable = false, dragging = 
               #{tag}
             </span>
           ))}
-          {task.tags.length > 3 && <span className="tag">+{task.tags.length - 3}</span>}
+          {task.tags.length > 3 && <span className="tag tag--more">+{task.tags.length - 3}</span>}
         </div>
       )}
 
@@ -53,7 +89,7 @@ export default function TaskCard({ task, onClick, draggable = false, dragging = 
             </span>
           )}
           {task.comments?.length > 0 && (
-            <span className="due">
+            <span className="comment-badge" title={`${task.comments.length} ghi chú`}>
               <Icon name="message" />
               {task.comments.length}
             </span>

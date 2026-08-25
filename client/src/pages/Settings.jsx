@@ -8,9 +8,9 @@ import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
 
 const THEMES = [
-  { value: 'light', icon: 'sun', label: 'Sáng' },
-  { value: 'dark', icon: 'moon', label: 'Tối' },
-  { value: 'system', icon: 'monitor', label: 'Theo hệ thống' },
+  { value: 'light', icon: 'sun', label: 'Giao diện sáng', desc: 'Tươi sáng, thanh lịch & dễ nhìn ban ngày' },
+  { value: 'dark', icon: 'moon', label: 'Giao diện tối', desc: 'Bảo vệ mắt, tương phản cao & hiện đại' },
+  { value: 'system', icon: 'monitor', label: 'Theo hệ thống', desc: 'Tự động đồng bộ theo cài đặt hệ điều hành' },
 ];
 
 export default function Settings() {
@@ -19,6 +19,7 @@ export default function Settings() {
   const toast = useToast();
   const [profile, setProfile] = useState({ name: user.name, avatarColor: user.avatarColor });
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirm: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
@@ -47,7 +48,7 @@ export default function Settings() {
         newPassword: passwords.newPassword,
       });
       setPasswords({ currentPassword: '', newPassword: '', confirm: '' });
-      toast.success('Đã đổi mật khẩu');
+      toast.success('Đã đổi mật khẩu thành công');
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -59,29 +60,39 @@ export default function Settings() {
     <>
       <header className="page-head">
         <div>
-          <h1>Tài khoản</h1>
-          <p>Cập nhật thông tin cá nhân, bảo mật và giao diện.</p>
+          <h1>Cài đặt tài khoản</h1>
+          <p>Tùy chỉnh thông tin cá nhân, giao diện hiển thị và bảo mật mật khẩu.</p>
         </div>
       </header>
 
       <div className="two-col">
-        <section className="card">
+        <section className="card card--interactive">
           <div className="card__head">
-            <h2>Thông tin cá nhân</h2>
+            <div className="card__title-group">
+              <Icon name="user" className="card__title-icon" />
+              <h2>Thông tin cá nhân</h2>
+            </div>
           </div>
 
           <div className="profile-preview">
-            <Avatar user={{ ...user, ...profile }} size={60} />
-            <div>
-              <strong>{profile.name}</strong>
+            <Avatar user={{ ...user, ...profile }} size={64} showStatus isOnline />
+            <div className="profile-preview__info">
+              <strong>{profile.name || user.name}</strong>
               <span className="muted-sm">{user.email}</span>
+              <span className="pill pill--success" style={{ marginTop: 4 }}>
+                Tài khoản đang hoạt động
+              </span>
             </div>
           </div>
 
           <form onSubmit={saveProfile} className="form">
             <label className="field">
-              <span>Họ và tên</span>
-              <input value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} />
+              <span>Họ và tên hiển thị</span>
+              <input
+                value={profile.name}
+                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                required
+              />
             </label>
 
             <div className="field">
@@ -109,9 +120,12 @@ export default function Settings() {
         </section>
 
         <div>
-          <section className="card">
+          <section className="card card--interactive">
             <div className="card__head">
-              <h2>Giao diện</h2>
+              <div className="card__title-group">
+                <Icon name="sun" className="card__title-icon" />
+                <h2>Chủ đề giao diện</h2>
+              </div>
             </div>
 
             <div className="theme-cards">
@@ -122,38 +136,52 @@ export default function Settings() {
                   className={`theme-card${theme === t.value ? ' theme-card--active' : ''}`}
                   onClick={() => setTheme(t.value)}
                 >
-                  <Icon name={t.icon} />
-                  {t.label}
+                  <span className="theme-card__icon">
+                    <Icon name={t.icon} size={20} />
+                  </span>
+                  <strong>{t.label}</strong>
+                  <small>{t.desc}</small>
                 </button>
               ))}
             </div>
-            <p className="muted-sm" style={{ marginTop: 12 }}>
-              "Theo hệ thống" sẽ tự đổi sáng/tối theo cài đặt của máy bạn.
-            </p>
           </section>
 
-          <section className="card">
+          <section className="card card--interactive">
             <div className="card__head">
-              <h2>Đổi mật khẩu</h2>
+              <div className="card__title-group">
+                <Icon name="pencil" className="card__title-icon" />
+                <h2>Đổi mật khẩu</h2>
+              </div>
             </div>
 
             <form onSubmit={savePassword} className="form">
               <label className="field">
                 <span>Mật khẩu hiện tại</span>
-                <input
-                  type="password"
-                  value={passwords.currentPassword}
-                  onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
-                  autoComplete="current-password"
-                  required
-                />
+                <div className="input-with-action">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={passwords.currentPassword}
+                    onChange={(e) => setPasswords({ ...passwords, currentPassword: e.target.value })}
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="input-action-btn"
+                    onClick={() => setShowPassword((v) => !v)}
+                    title={showPassword ? 'Ẩn' : 'Hiện'}
+                    aria-label="Hiển thị mật khẩu"
+                  >
+                    <Icon name={showPassword ? 'eyeOff' : 'eye'} size={15} />
+                  </button>
+                </div>
               </label>
 
               <div className="grid-2">
                 <label className="field">
-                  <span>Mật khẩu mới</span>
+                  <span>Mật khẩu mới (≥ 6 ký tự)</span>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={passwords.newPassword}
                     onChange={(e) => setPasswords({ ...passwords, newPassword: e.target.value })}
                     minLength={6}
@@ -163,9 +191,9 @@ export default function Settings() {
                 </label>
 
                 <label className="field">
-                  <span>Xác nhận</span>
+                  <span>Xác nhận mật khẩu mới</span>
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={passwords.confirm}
                     onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
                     autoComplete="new-password"
@@ -176,7 +204,7 @@ export default function Settings() {
 
               <div className="row-end">
                 <button type="submit" className="btn btn--primary" disabled={savingPassword}>
-                  {savingPassword ? 'Đang đổi...' : 'Đổi mật khẩu'}
+                  {savingPassword ? 'Đang đổi...' : 'Cập nhật mật khẩu'}
                 </button>
               </div>
             </form>
