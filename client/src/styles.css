@@ -876,8 +876,8 @@ input[type='date'] { cursor: text; }
 .task-card--done { background: var(--surface-2); }
 .task-card--done .task-card__title { color: var(--text-3); text-decoration: line-through; }
 
-.task-card__top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.task-card__title { font-size: 13.5px; font-weight: 500; line-height: 1.45; letter-spacing: -0.01em; }
+.task-card__top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.task-card__title { font-size: 13.5px; font-weight: 500; line-height: 1.45; letter-spacing: -0.01em; overflow-wrap: anywhere; }
 .task-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .task-card__meta { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; }
 
@@ -902,14 +902,17 @@ input[type='date'] { cursor: text; }
 }
 
 .chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  display: inline-block;
   padding: 2px 8px;
   border-radius: var(--r-xs);
   font-size: 11.5px;
   font-weight: 500;
-  max-width: 138px;
+  line-height: 1.55;
+  /* min-width: 0 để co lại được khi là flex item; max-width: 100% để không
+     bao giờ rộng hơn thẻ chứa nó. display phải là block-level thì
+     text-overflow: ellipsis mới có tác dụng. */
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -917,11 +920,17 @@ input[type='date'] { cursor: text; }
 
 .tag-list { display: flex; gap: 5px; flex-wrap: wrap; }
 .tag {
+  display: inline-block;
   padding: 1px 7px;
   border-radius: var(--r-xs);
   background: var(--surface-sunken);
   color: var(--text-3);
   font-size: 11px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .due { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 500; color: var(--text-2); white-space: nowrap; }
