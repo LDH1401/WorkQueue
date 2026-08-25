@@ -2,7 +2,11 @@
   "name": "workqueue",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Phần mềm quản lý công việc - React + Express + MongoDB",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "setup": "npm install --prefix server && npm install --prefix client",
     "dev": "concurrently -n API,WEB -c blue,green \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
@@ -10,6 +14,16 @@
     "dev:client": "npm --prefix client run dev",
     "seed": "npm --prefix server run seed",
     "build": "npm --prefix client run build"
+  },
+  "comment": "dependencies bên dưới là bản sao của server/package.json, dùng cho Vercel Serverless Function ở api/. Sửa version ở server/ thì nhớ sửa cả ở đây.",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.7.0",
+    "morgan": "^1.10.0"
   },
   "devDependencies": {
     "concurrently": "^9.0.1"

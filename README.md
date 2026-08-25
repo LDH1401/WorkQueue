@@ -66,6 +66,9 @@ npm run dev
 
 ```
 WorkQueue/
+├── vercel.json                   # Cấu hình deploy "tất cả trên Vercel"
+├── api/
+│   └── [...path].js              # Điểm vào serverless (chỉ Vercel dùng)
 ├── server/                       # Backend Express
 │   ├── .env.example
 │   └── src/
@@ -135,55 +138,77 @@ Tham số lọc của `GET /api/tasks`:
 
 ## Triển khai (deploy)
 
-Dự án gồm 3 phần chạy ở 3 nơi khác nhau:
+Database luôn phải nằm trên **MongoDB Atlas** (MongoDB chạy trên máy cá nhân không thể truy cập từ internet). Phần còn lại có 2 cách:
 
-| Phần | Nền tảng gợi ý | Ghi chú |
+| | Cách A — Tất cả trên Vercel | Cách B — Vercel + Railway |
 | --- | --- | --- |
-| Database | **MongoDB Atlas** (free M0) | Bắt buộc dùng cloud, không dùng được MongoDB trên máy cá nhân |
-| Backend `server/` | **Railway** / Render / Fly.io | Cần host chạy Node liên tục |
-| Frontend `client/` | **Vercel** / Netlify / Cloudflare Pages | Chỉ là file tĩnh sau khi build |
+| Số nền tảng | 1 | 2 |
+| Domain | 1 (không có CORS) | 2 (phải cấu hình CORS) |
+| Backend chạy kiểu | Serverless, ngủ khi rảnh | Server thường trực |
+| Request đầu sau khi rảnh | Chậm ~1–3s (cold start) | Nhanh ngay |
+| Phù hợp | Đồ án, portfolio, traffic thấp | Ứng dụng chạy thật, cần độ trễ ổn định |
 
-### Bước 1 — Database (Atlas)
+### Chuẩn bị chung
 
-Vào **Network Access** → *Add IP Address* → `0.0.0.0/0`.
-Bắt buộc, vì IP của Railway/Render thay đổi liên tục, không thể whitelist từng IP.
+1. Đẩy code lên GitHub (cả Vercel và Railway đều deploy từ đó).
+2. Atlas → **Network Access** → *Add IP Address* → `0.0.0.0/0`.
+   Bắt buộc, vì IP của Vercel/Railway thay đổi liên tục.
+3. Chuỗi kết nối phải có tên database trước dấu `?`:
+   `mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/workqueue?retryWrites=true&w=majority`
 
-Chuỗi kết nối phải có tên database trước dấu `?`:
+---
 
-```
-mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/workqueue?retryWrites=true&w=majority
-```
+### Cách A — Tất cả trên Vercel
 
-### Bước 2 — Backend
+Đã cấu hình sẵn trong repo:
 
-Đặt **Root Directory** = `server`, start command = `npm start`, rồi khai báo biến môi trường:
+| File | Vai trò |
+| --- | --- |
+| [api/[...path].js](api/%5B...path%5D.js) | Điểm vào serverless, nhận mọi request `/api/*` rồi chuyển cho app Express |
+| [vercel.json](vercel.json) | Build frontend ra `client/dist`, mọi đường dẫn không phải `/api` trả về `index.html` |
+| `dependencies` trong [package.json](package.json) | Bản sao của `server/package.json` để Vercel cài được thư viện cho function |
+
+**Các bước:**
+
+1. [vercel.com](https://vercel.com) → *Add New Project* → chọn repo.
+2. **Root Directory để nguyên là thư mục gốc** (không đổi thành `client`).
+3. Thêm biến môi trường:
 
 | Biến | Giá trị |
 | --- | --- |
 | `MONGO_URI` | Chuỗi kết nối Atlas |
 | `JWT_SECRET` | Chuỗi ngẫu nhiên dài (`openssl rand -base64 32`) |
+
+Không cần đặt `VITE_API_URL` (frontend gọi thẳng `/api` cùng domain) và không cần `CLIENT_URL` (không có CORS).
+
+4. Deploy, rồi kiểm tra `https://<domain>/api/health`.
+
+> **Lưu ý về serverless:** hàm `connectDB` trong [server/src/config/db.js](server/src/config/db.js) cache kết nối trên `globalThis`. Không có nó, mỗi cold start sẽ mở một kết nối MongoDB mới và nhanh chóng chạm trần 500 kết nối của Atlas M0.
+
+---
+
+### Cách B — Frontend Vercel + Backend Railway
+
+**Backend:** Root Directory = `server`, start command = `npm start`, biến môi trường:
+
+| Biến | Giá trị |
+| --- | --- |
+| `MONGO_URI` | Chuỗi kết nối Atlas |
+| `JWT_SECRET` | Chuỗi ngẫu nhiên dài |
 | `CLIENT_URL` | Domain frontend, ví dụ `https://workqueue.vercel.app` |
 | `NODE_ENV` | `production` |
 
 Không cần đặt `PORT` — nền tảng tự cấp, code đã đọc `process.env.PORT`.
 
-Kiểm tra: mở `https://<domain-api>/api/health`, phải trả về JSON `success: true`.
-
-### Bước 3 — Frontend
-
-Đặt **Root Directory** = `client`, build command = `npm run build`, output = `dist`, và khai báo:
+**Frontend:** Root Directory = `client` (khi đó [client/vercel.json](client/vercel.json) được dùng thay cho file ở gốc), thêm biến:
 
 | Biến | Giá trị |
 | --- | --- |
 | `VITE_API_URL` | `https://<domain-api>/api` (nhớ có `/api` ở cuối) |
 
-Biến `VITE_*` được nhúng vào code **lúc build**, nên mỗi lần đổi giá trị phải build lại (redeploy).
+Cuối cùng quay lại backend cập nhật `CLIENT_URL` cho khớp domain frontend rồi redeploy, nếu không trình duyệt sẽ chặn vì CORS.
 
-File [client/vercel.json](client/vercel.json) và [client/public/_redirects](client/public/_redirects) đã cấu hình sẵn fallback về `index.html` — thiếu chúng thì tải thẳng `/board` hay F5 giữa chừng sẽ ra lỗi 404.
-
-### Bước 4 — Nối hai đầu
-
-Sau khi có domain frontend, quay lại backend cập nhật `CLIENT_URL` cho khớp rồi redeploy, nếu không trình duyệt sẽ chặn vì CORS.
+---
 
 ### Tạo dữ liệu mẫu trên production
 
@@ -198,4 +223,4 @@ MONGO_URI="<chuỗi Atlas>" npm --prefix server run seed
 - [ ] `JWT_SECRET` là chuỗi ngẫu nhiên, khác giá trị trong `.env.example`
 - [ ] File `.env` không bị commit (đã có trong `.gitignore`)
 - [ ] User database Atlas chỉ có quyền `readWrite` trên database `workqueue`
-- [ ] `CLIENT_URL` trỏ đúng domain thật, không để `*`
+- [ ] Không đặt secret vào biến `VITE_*` — chúng bị nhúng thẳng vào code frontend, ai cũng đọc được
